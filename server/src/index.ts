@@ -1,3 +1,5 @@
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -12,7 +14,12 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express();
-app.use(cors());
+app.use(helmet());
+app.use(
+  "/api/auth",
+  rateLimit({ windowMs: 15 * 60 * 1000, limit: 20 }) // লগইনে ১৫ মিনিটে ২০ বার
+);
+app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
