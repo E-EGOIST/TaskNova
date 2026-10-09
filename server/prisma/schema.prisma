@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum TaskStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AvailabilityType {
+  AVAILABLE
+  LEAVE
+}
+
+model User {
+  id                Int      @id @default(autoincrement())
+  name              String
+  email             String   @unique
+  passwordHash      String
+  role              Role     @default(MEMBER)
+  maxHoursPerWeek   Int      @default(40)
+  createdAt         DateTime @default(now())
+
+  skills            UserSkill[]
+  assignments       Assignment[]
+  availability      Availability[]
+  createdTasks      Task[]   @relation("TaskCreator")
+}
+
+model Skill {
+  id     Int    @id @default(autoincrement())
+  name   String @unique
+
+  users  UserSkill[]
+  tasks  TaskSkill[]
+}
+
+model UserSkill {
+  userId      Int
+  skillId     Int
+  proficiency Int   // 1 থেকে 5
+
+  user   User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill  Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([userId, skillId])
+}
+
+model Task {
+  id             Int        @id @default(autoincrement())
+  title          String
+  description    String?
+  priority       Priority   @default(MEDIUM)
+  estimatedHours Float
+  deadline       DateTime
+  status         TaskStatus @default(PENDING)
+  createdById    Int
+  createdAt      DateTime   @default(now())
+
+  createdBy      User       @relation("TaskCreator", fields: [createdById], references: [id])
+  skills         TaskSkill[]
+  assignments    Assignment[]
+}
+
+model TaskSkill {
+  taskId   Int
+  skillId  Int
+  minLevel Int  @default(1)
+
+  task   Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  skill  Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, skillId])
+}
+
+model Assignment {
+  id             Int      @id @default(autoincrement())
+  taskId         Int
+  userId         Int
+  score          Float
+  scoreBreakdown Json
+  assignedAt     DateTime @default(now())
+
+  task  Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user  User @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+model Availability {
+  id      Int              @id @default(autoincrement())
+  userId  Int
+  start   DateTime
+  end     DateTime
+  type    AvailabilityType @default(LEAVE)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
