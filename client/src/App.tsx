@@ -1,3 +1,4 @@
+import Team from "./Team";
 import Dashboard from "./Dashboard";
 import { useState } from "react";
 import { api } from "./api";
@@ -12,6 +13,7 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+const [tab, setTab] = useState<"tasks" | "team">("tasks");
 
   async function login() {
     setError("");
@@ -47,8 +49,24 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main className="mx-auto max-w-4xl p-6">
-          <Dashboard role={user.role} />
+                <main className="mx-auto max-w-4xl p-6">
+          {user.role !== "MEMBER" && (
+            <div className="mb-4 flex gap-2">
+              <button
+                onClick={() => setTab("tasks")}
+                className={`rounded px-4 py-2 text-sm ${tab === "tasks" ? "bg-blue-600 text-white" : "bg-white"}`}
+              >
+                টাস্ক
+              </button>
+              <button
+                onClick={() => setTab("team")}
+                className={`rounded px-4 py-2 text-sm ${tab === "team" ? "bg-blue-600 text-white" : "bg-white"}`}
+              >
+                টিম ও Skills
+              </button>
+            </div>
+          )}
+          {user.role !== "MEMBER" && tab === "team" ? <Team /> : <Dashboard role={user.role} />}
         </main>
       </div>
     );

@@ -1,3 +1,4 @@
+import LeavePanel from "./Leave";
 import { useEffect, useState } from "react";
 import { api } from "./api";
 
@@ -238,5 +239,13 @@ function MemberView() {
 }
 
 export default function Dashboard({ role }: { role: string }) {
-  return role === "MEMBER" ? <MemberView /> : <ManagerView />;
+  if (role === "MEMBER") {
+    return (
+      <div>
+        <MemberView />
+        <LeavePanel />
+      </div>
+    );
+  }
+  return <ManagerView />;
 }
