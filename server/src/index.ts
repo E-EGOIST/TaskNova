@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth";
 import skillRoutes from "./routes/skills";
 import taskRoutes from "./routes/tasks";
 import userRoutes from "./routes/users";
+import availabilityRoutes from "./routes/availability";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is missing in .env");
@@ -18,6 +19,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/skills", skillRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/availability", availabilityRoutes);
+
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", app: "TaskNova" });
 });

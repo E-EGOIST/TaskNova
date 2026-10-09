@@ -1,8 +1,8 @@
-import { getSuggestions } from "../services/allocationEngine";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { getSuggestions } from "../services/allocationEngine";
 
 const router = Router();
 
@@ -54,6 +54,19 @@ router.get("/", requireAuth, async (_req, res) => {
   });
   res.json(tasks);
 });
+
+// Member-এর নিজের টাস্ক (/:id route-এর আগে থাকতে হবে)
+router.get("/mine", requireAuth, async (req, res) => {
+  const assignments = await prisma.assignment.findMany({
+    where: { userId: req.user!.id },
+    orderBy: { assignedAt: "desc" },
+    include: {
+      task: { include: { skills: { include: { skill: true } } } },
+    },
+  });
+  res.json(assignments);
+});
+
 // Top 3 suggestion
 router.get("/:id/suggestions", requireAuth, requireRole("ADMIN", "MANAGER"), async (req, res) => {
   const suggestions = await getSuggestions(Number(req.params.id));
@@ -74,7 +87,6 @@ router.post("/:id/assign", requireAuth, requireRole("ADMIN", "MANAGER"), async (
 
   try {
     const assignment = await prisma.$transaction(async (tx) => {
-      // শুধু PENDING হলেই assign হবে, এতে একই টাস্ক দুইবার assign ঠেকে
       const updated = await tx.task.updateMany({
         where: { id: taskId, status: "PENDING" },
         data: { status: "ASSIGNED" },
@@ -98,4 +110,47 @@ router.post("/:id/assign", requireAuth, requireRole("ADMIN", "MANAGER"), async (
     res.status(500).json({ error: "Could not assign" });
   }
 });
+
+// Task status আপডেট
+router.patch("/:id/status", requireAuth, async (req, res) => {
+  const taskId = Number(req.params.id);
+  const parsed = z
+    .object({ status: z.enum(["IN_PROGRESS", "DONE", "CANCELLED"]) })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid status" });
+
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: { assignments: true },
+  });
+  if (!task) return res.status(404).json({ error: "Task not found" });
+
+  const isManager = ["ADMIN", "MANAGER"].includes(req.user!.role);
+  const isAssignee = task.assignments.some((a) => a.userId === req.user!.id);
+
+  if (!isManager && !isAssignee) {
+    return res.status(403).json({ error: "Permission denied" });
+  }
+  if (!isManager && parsed.data.status === "CANCELLED") {
+    return res.status(403).json({ error: "Only manager can cancel" });
+  }
+
+  const allowed: Record<string, string[]> = {
+    IN_PROGRESS: ["ASSIGNED"],
+    DONE: ["IN_PROGRESS"],
+    CANCELLED: ["PENDING", "ASSIGNED", "IN_PROGRESS"],
+  };
+  if (!allowed[parsed.data.status].includes(task.status)) {
+    return res
+      .status(400)
+      .json({ error: `Cannot change from ${task.status} to ${parsed.data.status}` });
+  }
+
+  const updated = await prisma.task.update({
+    where: { id: taskId },
+    data: { status: parsed.data.status },
+  });
+  res.json(updated);
+});
+
 export default router;
