@@ -14,11 +14,11 @@ export async function getSuggestions(taskId: number, limit = 3) {
   if (!task) return null;
 
   const members = await prisma.user.findMany({
-    where: { role: "MEMBER" },
+    where: { role: "MEMBER", isActive: true },
     include: {
       skills: true,
       availability: true,
-      assignments: { include: { task: true } },
+      assignments: { where: { active: true }, include: { task: true } },
     },
   });
 
@@ -26,7 +26,6 @@ export async function getSuggestions(taskId: number, limit = 3) {
   const results = [];
 
   for (const m of members) {
-    // 1. Skill match
     let skillMatch = 1;
     if (task.skills.length > 0) {
       const parts = task.skills.map((req) => {
@@ -38,13 +37,11 @@ export async function getSuggestions(taskId: number, limit = 3) {
     }
     if (skillMatch < MIN_SKILL_MATCH) continue; // অযোগ্য, বাদ
 
-    // 2. Workload: চলমান (ASSIGNED / IN_PROGRESS) টাস্কের ঘণ্টা
     const activeHours = m.assignments
       .filter((a) => ["ASSIGNED", "IN_PROGRESS"].includes(a.task.status))
       .reduce((sum, a) => sum + a.task.estimatedHours, 0);
     const workload = clamp(1 - activeHours / m.maxHoursPerWeek);
 
-    // 3. Availability: এখন থেকে deadline পর্যন্ত leave-এর দিন বাদে অনুপাত
     const totalMs = Math.max(task.deadline.getTime() - now.getTime(), 1);
     let leaveMs = 0;
     for (const a of m.availability) {
@@ -55,7 +52,6 @@ export async function getSuggestions(taskId: number, limit = 3) {
     }
     const availability = clamp(1 - leaveMs / totalMs);
 
-    // 4. Experience: আগে শেষ করা টাস্ক
     const done = m.assignments.filter((a) => a.task.status === "DONE").length;
     const experience = clamp(done / EXPERIENCE_CAP);
 

@@ -1,3 +1,4 @@
+import AdminApp from "./AdminApp";
 import Team from "./Team";
 import Dashboard from "./Dashboard";
 import { useState } from "react";
@@ -28,6 +29,7 @@ export default function App() {
   }
 
   if (user) {
+        if (user.role === "ADMIN") return <AdminApp user={user} onLogout={logout} />;
     return (
       <div className="min-h-screen bg-gray-100">
         <header className="flex items-center justify-between bg-white px-6 py-3 shadow">

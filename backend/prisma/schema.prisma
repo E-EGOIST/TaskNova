@@ -20,6 +20,8 @@ enum TaskStatus {
   IN_PROGRESS
   DONE
   CANCELLED
+    category   String?
+  difficulty Int      @default(3)
 }
 
 enum Priority {
@@ -47,6 +49,13 @@ model User {
   assignments       Assignment[]
   availability      Availability[]
   createdTasks      Task[]   @relation("TaskCreator")
+
+    isActive     Boolean     @default(true)
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  managerId    Int?
+  manager      User?       @relation("ManagerMembers", fields: [managerId], references: [id], onDelete: SetNull)
+  members      User[]      @relation("ManagerMembers")
 }
 
 model Skill {
@@ -108,6 +117,7 @@ model Assignment {
 
   @@index([taskId])
   @@index([userId])
+    active Boolean @default(true)
 }
 
 model Availability {
@@ -120,4 +130,21 @@ model Availability {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  users     User[]
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  userName  String?
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

@@ -58,7 +58,7 @@ router.get("/", requireAuth, async (_req, res) => {
 // Member-এর নিজের টাস্ক (/:id route-এর আগে থাকতে হবে)
 router.get("/mine", requireAuth, async (req, res) => {
   const assignments = await prisma.assignment.findMany({
-    where: { userId: req.user!.id },
+    where: { userId: req.user!.id, active: true },
     orderBy: { assignedAt: "desc" },
     include: {
       task: { include: { skills: { include: { skill: true } } } },
@@ -121,7 +121,7 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
 
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    include: { assignments: true },
+    include: { assignments: { where: { active: true } } },
   });
   if (!task) return res.status(404).json({ error: "Task not found" });
 

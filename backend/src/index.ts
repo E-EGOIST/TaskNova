@@ -8,6 +8,9 @@ import skillRoutes from "./routes/skills";
 import taskRoutes from "./routes/tasks";
 import userRoutes from "./routes/users";
 import availabilityRoutes from "./routes/availability";
+import adminRoutes from "./routes/admin";
+
+app.use("/api/admin", adminRoutes);
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is missing in .env");
