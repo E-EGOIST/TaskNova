@@ -9,12 +9,16 @@ import taskRoutes from "./routes/tasks";
 import userRoutes from "./routes/users";
 import availabilityRoutes from "./routes/availability";
 import adminRoutes from "./routes/admin";
+import managerRoutes from "./routes/manager";
+import meRoutes from "./routes/me";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is missing in .env");
 }
 
 const app = express();
+app.use("/api/manager", managerRoutes);
+app.use("/api/me", meRoutes);
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
