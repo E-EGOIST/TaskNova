@@ -17,8 +17,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express();
-app.use("/api/manager", managerRoutes);
-app.use("/api/me", meRoutes);
+app.set("trust proxy", 1);
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
@@ -31,6 +30,8 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/manager", managerRoutes);
+app.use("/api/me", meRoutes);
 
 app.get("/", (_req, res) => {
   res.send("TaskNova API is running.");
