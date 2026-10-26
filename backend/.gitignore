@@ -8,3 +8,5 @@ node_modules
 .cursor
 .devin
 generated
+check-users.ts
+make-user.ts

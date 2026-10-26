@@ -150,6 +150,12 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
     where: { id: taskId },
     data: { status: parsed.data.status },
   });
+  
+    if (parsed.data.status === "DONE") {
+    await prisma.auditLog
+      .create({ data: { userId: req.user!.id, action: "TASK_DONE", detail: `${taskId}|${task.title}` } })
+      .catch(() => {});
+  }
   res.json(updated);
 });
 

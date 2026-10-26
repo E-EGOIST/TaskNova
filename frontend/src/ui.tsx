@@ -165,3 +165,11 @@ export function Shell<T extends string>({
     </div>
   );
 }
+export function downloadCsv(name: string, cols: string[], rows: (string | number)[][]) {
+  const esc = (v: string | number) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csv = [cols, ...rows].map((r) => r.map(esc).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `${name}.csv`;
+  a.click();
+}
