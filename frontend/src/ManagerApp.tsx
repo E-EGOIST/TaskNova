@@ -27,6 +27,8 @@ type L = { id: number; userId: number; start: string; end: string };
 type Data = {
   me: { id: number; name: string }; allMembers: boolean; members: Member[]; tasks: T[];
   assignments: A[]; leaves: L[]; skills: Skill[]; doneAt: Record<string, string>;
+  needsReview: { taskId: number; title: string; assignee: string; at: string | null }[];
+  reassignRequests: { taskId: number; title: string; assignee: string; reason: string; at: string }[];
 };
 type Sug = {
   userId: number; name: string; score: number;
@@ -153,7 +155,16 @@ function buildNotes(d: Data): Note[] {
       out.push({ id: `d${t.id}`, tone: "ok", kind: "সম্পন্ন", text: `"${t.title}" সম্পন্ন করেছেন ${nameOf(d, activeAssign(d, t.id)?.userId ?? 0)}`, at });
     }
   }
-  return out.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+   for (const r of d.needsReview) {
+    out.push({ id: `s${r.taskId}`, tone: "warn", kind: "Review দরকার", text: `"${r.title}" — ${r.assignee} Submit করেছেন`, at: r.at ?? new Date().toISOString() });
+  }
+  for (const r of d.reassignRequests) {
+    out.push({ id: `q${r.taskId}`, tone: "warn", kind: "Reassign অনুরোধ", text: `"${r.title}" — ${r.assignee}: ${r.reason}`, at: r.at });
+  }
+
+  // জরুরি আগে (overdue, review), তারপর সময় অনুযায়ী
+  const rank: Record<Note["tone"], number> = { danger: 0, warn: 1, info: 2, ok: 3 };
+  return out.sort((a, b) => rank[a.tone] - rank[b.tone] || new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
 const TONE: Record<Note["tone"], string> = {
@@ -811,8 +822,12 @@ export default function ManagerApp({ user, onLogout }: { user: { name: string };
   async function load() {
     setData(await api<Data>("/manager/overview"));
   }
-  useEffect(() => {
+   useEffect(() => {
     load().catch((e) => setMsg(e.message));
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") load().catch(() => {});
+    }, 30000);
+    return () => clearInterval(timer);
   }, []);
 
   const run: Run = async (fn, success) => {
@@ -829,8 +844,13 @@ export default function ManagerApp({ user, onLogout }: { user: { name: string };
 
   const notes = useMemo(() => (data ? buildNotes(data) : []), [data]);
   const alerts = notes.filter((n) => n.tone === "danger" || n.tone === "warn").length;
-  const nav = NAV.map(([id, label]) => [id, id === "notifications" && alerts > 0 ? `${label} (${alerts})` : label] as const);
-
+  const pendingReviews = data ? data.needsReview.length + data.reassignRequests.length : 0;
+  const nav = NAV.map(([id, label]) => [
+    id,
+    id === "notifications" && alerts > 0 ? `${label} (${alerts})`
+      : id === "reviews" && pendingReviews > 0 ? `${label} (${pendingReviews})`
+      : label,
+  ] as const);
   return (
     <Shell nav={nav} tab={tab} onTab={setTab} user={user} roleLabel="Manager" onLogout={onLogout}>
       <Notice msg={msg} ok={ok} />

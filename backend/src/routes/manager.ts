@@ -1,3 +1,4 @@
+import { eventsFor, flowOf, taskIdOf } from "../lib/workflow";
 import { eventsFor, flowOf } from "../lib/workflow";
 import { Router, type Request } from "express";
 import { z } from "zod";
@@ -83,7 +84,7 @@ router.get("/overview", async (req, res) => {
   });
   const taskIds: number[] = tasks.map((t: { id: number }) => t.id);
 
-  const [assignments, leaves, doneLogs] = await Promise.all([
+  const [assignments, leaves, events] = await Promise.all([
     prisma.assignment.findMany({
       where: { taskId: { in: taskIds } },
       orderBy: { assignedAt: "desc" },
@@ -93,17 +94,36 @@ router.get("/overview", async (req, res) => {
       where: { type: "LEAVE", userId: { in: team.ids }, end: { gte: new Date() } },
       orderBy: { start: "asc" },
     }),
-    prisma.auditLog.findMany({ where: { action: "TASK_DONE" }, orderBy: { createdAt: "asc" }, take: 3000 }),
+    eventsFor(taskIds),
   ]);
 
-  // কোন টাস্ক কখন DONE হয়েছে (audit log থেকে)
+  // কোন টাস্ক কখন সম্পন্ন হয়েছে
   const doneAt: Record<number, string> = {};
-  for (const l of doneLogs as { detail: string | null; createdAt: Date }[]) {
-    const id = Number((l.detail ?? "").split("|")[0]);
-    if (id && taskIds.includes(id)) doneAt[id] = l.createdAt.toISOString();
+  for (const e of events) {
+    if (e.action === "TASK_DONE") doneAt[taskIdOf(e)] = e.createdAt.toISOString();
   }
 
-  res.json({ me, allMembers: team.all, members, tasks, assignments, leaves, skills, doneAt });
+  // Review দরকার ও Reassign অনুরোধ
+  const taskById = new Map<number, { title: string; status: string }>(
+    tasks.map((t: { id: number; title: string; status: string }) => [t.id, t])
+  );
+  const needsReview: object[] = [];
+  const reassignRequests: object[] = [];
+  for (const a of assignments as { taskId: number; active: boolean; assignedAt: Date; user: { name: string } }[]) {
+    const t = taskById.get(a.taskId);
+    if (!a.active || !t || !["ASSIGNED", "IN_PROGRESS"].includes(t.status)) continue;
+    const f = flowOf({ id: a.taskId, status: t.status }, a.assignedAt, events);
+    if (f.stage === "SUBMITTED") {
+      needsReview.push({ taskId: a.taskId, title: t.title, assignee: a.user.name, at: f.submittedAt });
+    }
+    if (f.reassign) {
+      reassignRequests.push({ taskId: a.taskId, title: t.title, assignee: a.user.name, reason: f.reassign.reason, at: f.reassign.at });
+    }
+  }
+
+  res.json({
+    me, allMembers: team.all, members, tasks, assignments, leaves, skills, doneAt, needsReview, reassignRequests,
+  });
 });
 
 /* ---------- task CRUD ---------- */
