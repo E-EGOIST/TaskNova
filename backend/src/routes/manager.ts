@@ -1,3 +1,4 @@
+import { eventsFor, flowOf } from "../lib/workflow";
 import { Router, type Request } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
@@ -298,5 +299,86 @@ router.get("/balance", async (req, res) => {
   }
   res.json(proposals);
 });
+/* ---------- Review queue ---------- */
+router.get("/reviews", async (req, res) => {
+  const uid = req.user!.id;
+  const team = await teamOf(uid);
 
+  const active = await prisma.assignment.findMany({
+    where: {
+      active: true,
+      task: { status: { in: ["ASSIGNED", "IN_PROGRESS"] } },
+      ...(team.all ? {} : { OR: [{ userId: { in: team.ids } }, { task: { createdById: uid } }] }),
+    },
+    include: { task: true, user: { select: { id: true, name: true } } },
+  });
+  const events = await eventsFor(active.map((a: { taskId: number }) => a.taskId));
+
+  const submitted: object[] = [];
+  const requests: object[] = [];
+  for (const a of active) {
+    const f = flowOf(a.task, a.assignedAt, events);
+    const base = {
+      taskId: a.taskId, title: a.task.title, deadline: a.task.deadline,
+      estimatedHours: a.task.estimatedHours, assignee: a.user,
+    };
+    if (f.stage === "SUBMITTED") {
+      submitted.push({ ...base, submittedAt: f.submittedAt, note: f.submitNote });
+    }
+    if (f.reassign) requests.push({ ...base, reason: f.reassign.reason, at: f.reassign.at, stage: f.stage });
+  }
+
+  const members = await prisma.user.findMany({
+    where: { id: { in: team.ids } },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  res.json({ submitted, requests, members });
+});
+
+router.post("/tasks/:id/review", async (req, res) => {
+  const id = Number(req.params.id);
+  const p = z
+    .object({ decision: z.enum(["APPROVE", "REJECT"]), note: z.string().max(500).optional() })
+    .safeParse(req.body);
+  if (!p.success) return res.status(400).json({ error: "Invalid input" });
+
+  const team = await teamOf(req.user!.id);
+  const task = await taskInScope(id, req.user!.id, team);
+  if (!task) return res.status(404).json({ error: "Task not found" });
+
+  const a = await prisma.assignment.findFirst({ where: { taskId: id, active: true } });
+  if (!a) return res.status(400).json({ error: "কোনো সক্রিয় assignment নেই" });
+  const f = flowOf(task, a.assignedAt, await eventsFor([id]));
+  if (f.stage !== "SUBMITTED") return res.status(400).json({ error: "এই টাস্ক এখন review-এর অবস্থায় নেই" });
+
+  const text = p.data.note ?? "";
+  if (p.data.decision === "APPROVE") {
+    await prisma.task.update({ where: { id }, data: { status: "DONE" } });
+    await prisma.auditLog
+      .create({ data: { userId: a.userId, action: "TASK_DONE", detail: `${id}|${task.title}` } })
+      .catch(() => {});
+    await log(req, "TASK_APPROVED", `${id}|${task.title}|${text}`);
+  } else {
+    await log(req, "TASK_REJECTED", `${id}|${task.title}|${text}`);
+  }
+  res.json({ ok: true });
+});
+
+router.post("/tasks/:id/decline-reassign", async (req, res) => {
+  const id = Number(req.params.id);
+  const p = z.object({ note: z.string().max(500).optional() }).safeParse(req.body ?? {});
+  if (!p.success) return res.status(400).json({ error: "Invalid input" });
+
+  const team = await teamOf(req.user!.id);
+  const task = await taskInScope(id, req.user!.id, team);
+  if (!task) return res.status(404).json({ error: "Task not found" });
+  const a = await prisma.assignment.findFirst({ where: { taskId: id, active: true } });
+  if (!a) return res.status(400).json({ error: "কোনো সক্রিয় assignment নেই" });
+  const f = flowOf(task, a.assignedAt, await eventsFor([id]));
+  if (!f.reassign) return res.status(400).json({ error: "কোনো পেন্ডিং অনুরোধ নেই" });
+
+  await log(req, "TASK_REASSIGN_DECLINED", `${id}|${p.data.note ?? ""}`);
+  res.json({ ok: true });
+});
 export default router;

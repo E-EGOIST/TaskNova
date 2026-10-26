@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import Team from "./Team";
+import ReviewPanel from "./ReviewPanel";
 import {
   Badge, Bar, Notice, PRIORITY_STYLE, STATUSES, STATUS_STYLE, ScoreBar, Shell, Stat, Table,
   btn, btnDanger, btnGhost, card, downloadCsv, fmt, inp, isOpen, isOverdue, pct,
@@ -38,7 +39,7 @@ type Proposal = {
 type Run = (fn: () => Promise<unknown>, success?: string) => Promise<void>;
 
 const NAV = [
-  ["overview", "Overview"], ["team", "Team"], ["tasks", "Tasks"], ["allocation", "Allocation"],
+  ["overview", "Overview"], ["team", "Team"], ["tasks", "Tasks"],["reviews", "Reviews"], ["allocation", "Allocation"],
   ["workload", "Workload"], ["performance", "Performance"], ["notifications", "Notifications"],
   ["reports", "Reports"], ["skills", "Skills"],
 ] as const;
@@ -840,6 +841,7 @@ export default function ManagerApp({ user, onLogout }: { user: { name: string };
           {tab === "overview" && <Overview data={data} notes={notes} go={setTab} />}
           {tab === "team" && <TeamTab data={data} />}
           {tab === "tasks" && <TasksTab data={data} run={run} />}
+          {tab === "reviews" && <ReviewPanel />}
           {tab === "allocation" && <AllocationTab data={data} />}
           {tab === "workload" && <WorkloadTab data={data} run={run} />}
           {tab === "performance" && <PerformanceTab data={data} />}
