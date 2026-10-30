@@ -188,19 +188,40 @@ router.post("/tasks", async (req, res) => {
   }
 });
 
+const adminPatch = z.object({
+  title: z.string().min(2).optional(),
+  description: z.string().nullable().optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
+  estimatedHours: z.number().positive().optional(),
+  deadline: z.string().datetime().optional(),
+  category: z.string().nullable().optional(),
+  difficulty: z.number().int().min(1).max(5).optional(),
+  skills: z.array(z.object({ skillId: z.number().int(), minLevel: z.number().int().min(1).max(5) })).optional(),
+});
+
 router.patch("/tasks/:id", async (req, res) => {
-  const p = taskBody.omit({ skills: true }).partial().safeParse(req.body);
+  const id = Number(req.params.id);
+  const p = adminPatch.safeParse(req.body);
   if (!p.success) return res.status(400).json({ error: "Invalid input" });
-  const { deadline, ...rest } = p.data;
+
+  const { skills, deadline, ...rest } = p.data;
   try {
-    const t = await prisma.task.update({
-      where: { id: Number(req.params.id) },
-      data: { ...rest, ...(deadline ? { deadline: new Date(deadline) } : {}) },
+    const t = await prisma.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id },
+        data: { ...rest, ...(deadline ? { deadline: new Date(deadline) } : {}) },
+      });
+      if (skills) {
+        await tx.taskSkill.deleteMany({ where: { taskId: id } });
+        const list = Array.from(new Map(skills.map((s) => [s.skillId, s])).values());
+        if (list.length) await tx.taskSkill.createMany({ data: list.map((s) => ({ taskId: id, ...s })) });
+      }
+      return updated;
     });
     await log(req, "TASK_UPDATED", t.title);
     res.json(t);
   } catch {
-    res.status(404).json({ error: "Task not found" });
+    res.status(404).json({ error: "Task not found or invalid skill" });
   }
 });
 

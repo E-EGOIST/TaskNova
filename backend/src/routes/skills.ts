@@ -23,5 +23,14 @@ router.post("/", requireAuth, requireRole("ADMIN", "MANAGER"), async (req, res) 
     res.status(409).json({ error: "Skill already exists" });
   }
 });
+router.post("/bulk", requireAuth, requireRole("ADMIN", "MANAGER"), async (req, res) => {
+  const p = z
+    .object({ names: z.array(z.string().trim().min(1).max(80)).min(1).max(500) })
+    .safeParse(req.body);
+  if (!p.success) return res.status(400).json({ error: "Invalid input" });
 
+  const names = Array.from(new Set(p.data.names.map((n) => n.trim())));
+  const r = await prisma.skill.createMany({ data: names.map((name) => ({ name })), skipDuplicates: true });
+  res.json({ added: r.count });
+});
 export default router;

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "./api";
 import Team from "./Team";
+import TaskForm, { emptyTask, type TaskFormValue } from "./TaskForm";
 
 type Role = "ADMIN" | "MANAGER" | "MEMBER";
 type Skill = { id: number; name: string };
@@ -395,66 +396,25 @@ function Departments({ data, run }: { data: Data; run: Run }) {
 
 /* ---------- Tasks ---------- */
 function Tasks({ data, run }: { data: Data; run: Run }) {
-  const empty = { id: 0, title: "", hours: 8, deadline: "", priority: "MEDIUM", difficulty: 3, category: "", skillId: "", minLevel: 3 };
-  const [f, setF] = useState(empty);
+  const [f, setF] = useState<TaskFormValue>(emptyTask);
   const [show, setShow] = useState(false);
   const members = data.users.filter((u) => u.role === "MEMBER" && u.isActive);
 
-  function save() {
-    const base = {
-      title: f.title, estimatedHours: Number(f.hours), deadline: new Date(f.deadline).toISOString(),
-      priority: f.priority, difficulty: Number(f.difficulty), category: f.category || null,
-    };
-    run(async () => {
-      if (f.id) await api(`/admin/tasks/${f.id}`, { method: "PATCH", body: base });
-      else
-        await api("/admin/tasks", {
-          method: "POST",
-          body: { ...base, skills: f.skillId === "" ? [] : [{ skillId: Number(f.skillId), minLevel: Number(f.minLevel) }] },
-        });
-      setF(empty);
-      setShow(false);
-    }, f.id ? "টাস্ক আপডেট হয়েছে" : "টাস্ক তৈরি হয়েছে");
-  }
-
   return (
     <div className="space-y-4">
-      <button className={btn} onClick={() => { setF(empty); setShow((s) => !s); }}>{show ? "বন্ধ করুন" : "+ নতুন টাস্ক"}</button>
+      <button className={btn} onClick={() => { setF(emptyTask); setShow((s) => !s); }}>
+        {show ? "বন্ধ করুন" : "+ নতুন টাস্ক"}
+      </button>
+
       {show && (
-        <div className={`${card} grid gap-3 p-4 md:grid-cols-3`}>
-          <input className={`${inp} md:col-span-3`} placeholder="Title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
-          <label className="text-xs text-slate-500">Estimated hours
-            <input className={`${inp} mt-1 w-full`} type="number" min={1} value={f.hours} onChange={(e) => setF({ ...f, hours: Number(e.target.value) })} />
-          </label>
-          <label className="text-xs text-slate-500">Deadline
-            <input className={`${inp} mt-1 w-full`} type="datetime-local" value={f.deadline} onChange={(e) => setF({ ...f, deadline: e.target.value })} />
-          </label>
-          <label className="text-xs text-slate-500">Priority
-            <select className={`${inp} mt-1 w-full`} value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}>
-              {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => <option key={p}>{p}</option>)}
-            </select>
-          </label>
-          <label className="text-xs text-slate-500">Difficulty (1-5)
-            <input className={`${inp} mt-1 w-full`} type="number" min={1} max={5} value={f.difficulty} onChange={(e) => setF({ ...f, difficulty: Number(e.target.value) })} />
-          </label>
-          <label className="text-xs text-slate-500">Category
-            <input className={`${inp} mt-1 w-full`} placeholder="যেমন Frontend" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
-          </label>
-          {!f.id && (
-            <label className="text-xs text-slate-500">Required skill / min level
-              <div className="mt-1 flex gap-2">
-                <select className={`${inp} flex-1`} value={f.skillId} onChange={(e) => setF({ ...f, skillId: e.target.value })}>
-                  <option value="">নেই</option>
-                  {data.skills.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <input className={`${inp} w-16`} type="number" min={1} max={5} value={f.minLevel} onChange={(e) => setF({ ...f, minLevel: Number(e.target.value) })} />
-              </div>
-            </label>
-          )}
-          <div className="md:col-span-3">
-            <button className={btn} disabled={!f.title || !f.deadline} onClick={save}>{f.id ? "আপডেট করুন" : "তৈরি করুন"}</button>
-          </div>
-        </div>
+        <TaskForm
+          value={f}
+          onChange={setF}
+          skills={data.skills}
+          endpoint="/admin/tasks"
+          run={run}
+          onDone={() => { setF(emptyTask); setShow(false); }}
+        />
       )}
 
       <Table head={["Task", "Priority", "Diff.", "Deadline", "Status", "Assignee", "Actions"]}>
@@ -491,7 +451,11 @@ function Tasks({ data, run }: { data: Data; run: Run }) {
                   <button
                     className={btnGhost}
                     onClick={() => {
-                      setF({ id: t.id, title: t.title, hours: t.estimatedHours, deadline: toLocalInput(t.deadline), priority: t.priority, difficulty: t.difficulty, category: t.category ?? "", skillId: "", minLevel: 3 });
+                      setF({
+                        id: t.id, title: t.title, description: t.description ?? "", hours: t.estimatedHours,
+                        deadline: toLocalInput(t.deadline), priority: t.priority, difficulty: t.difficulty,
+                        category: t.category ?? "", skills: t.skills.map((s) => ({ skillId: s.skillId, minLevel: s.minLevel })),
+                      });
                       setShow(true);
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}

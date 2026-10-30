@@ -1,3 +1,4 @@
+import TaskForm, { emptyTask, type TaskFormValue } from "./TaskForm";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import Team from "./Team";
@@ -347,43 +348,14 @@ function TeamTab({ data }: { data: Data }) {
 }
 
 /* ================= Tasks ================= */
-type Form = {
-  id: number; title: string; description: string; hours: number; deadline: string; priority: string;
-  difficulty: number; category: string; skills: { skillId: number | ""; minLevel: number }[];
-};
-const emptyForm: Form = {
-  id: 0, title: "", description: "", hours: 8, deadline: "", priority: "MEDIUM", difficulty: 3, category: "", skills: [],
-};
 
 function TasksTab({ data, run }: { data: Data; run: Run }) {
-  const [f, setF] = useState<Form>(emptyForm);
+  const [f, setF] = useState<TaskFormValue>(emptyTask);
   const [show, setShow] = useState(false);
   const [filter, setFilter] = useState("ALL");
   const [sug, setSug] = useState<Record<number, Sug[]>>({});
   const [all, setAll] = useState<Record<number, boolean>>({});
   const rows = data.tasks.filter((t) => filter === "ALL" || t.status === filter);
-
-  function save() {
-    const skills = f.skills
-      .filter((s) => s.skillId !== "")
-      .map((s) => ({ skillId: Number(s.skillId), minLevel: Number(s.minLevel) }));
-    const body = {
-      title: f.title,
-      description: f.description || null,
-      estimatedHours: Number(f.hours),
-      deadline: new Date(f.deadline).toISOString(),
-      priority: f.priority,
-      difficulty: Number(f.difficulty),
-      category: f.category || null,
-      skills,
-    };
-    run(async () => {
-      if (f.id) await api(`/manager/tasks/${f.id}`, { method: "PATCH", body });
-      else await api("/manager/tasks", { method: "POST", body });
-      setF(emptyForm);
-      setShow(false);
-    }, f.id ? "টাস্ক আপডেট হয়েছে" : "টাস্ক তৈরি হয়েছে");
-  }
 
   function edit(t: T) {
     setF({
@@ -410,10 +382,6 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
     }, msg);
   }
 
-  function setSkill(i: number, patch: Partial<Form["skills"][number]>) {
-    setF({ ...f, skills: f.skills.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -426,56 +394,20 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
             {s}
           </button>
         ))}
-        <button className={`${btn} ml-auto`} onClick={() => { setF(emptyForm); setShow((v) => !v); }}>
+        <button className={`${btn} ml-auto`} onClick={() => { setF(emptyTask); setShow((v) => !v); }}>
           {show ? "বন্ধ করুন" : "+ নতুন টাস্ক"}
         </button>
       </div>
 
       {show && (
-        <div className={`${card} grid gap-3 p-4 md:grid-cols-3`}>
-          <input className={`${inp} md:col-span-3`} placeholder="Title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
-          <textarea className={`${inp} md:col-span-3`} rows={2} placeholder="বিবরণ (ঐচ্ছিক)" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
-          <label className="text-xs text-slate-500">Estimated hours
-            <input className={`${inp} mt-1 w-full`} type="number" min={1} value={f.hours} onChange={(e) => setF({ ...f, hours: Number(e.target.value) })} />
-          </label>
-          <label className="text-xs text-slate-500">Deadline
-            <input className={`${inp} mt-1 w-full`} type="datetime-local" value={f.deadline} onChange={(e) => setF({ ...f, deadline: e.target.value })} />
-          </label>
-          <label className="text-xs text-slate-500">Priority
-            <select className={`${inp} mt-1 w-full`} value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}>
-              {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => <option key={p}>{p}</option>)}
-            </select>
-          </label>
-          <label className="text-xs text-slate-500">Difficulty (1-5)
-            <input className={`${inp} mt-1 w-full`} type="number" min={1} max={5} value={f.difficulty} onChange={(e) => setF({ ...f, difficulty: Number(e.target.value) })} />
-          </label>
-          <label className="text-xs text-slate-500 md:col-span-2">Category
-            <input className={`${inp} mt-1 w-full`} placeholder="যেমন Frontend" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
-          </label>
-
-          <div className="md:col-span-3">
-            <p className="mb-1 text-xs text-slate-500">Required skills ও min level</p>
-            {f.skills.map((s, i) => (
-              <div key={i} className="mb-2 flex gap-2">
-                <select
-                  className={`${inp} flex-1`}
-                  value={s.skillId}
-                  onChange={(e) => setSkill(i, { skillId: e.target.value === "" ? "" : Number(e.target.value) })}
-                >
-                  <option value="">Skill বাছুন</option>
-                  {data.skills.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-                </select>
-                <input className={`${inp} w-20`} type="number" min={1} max={5} value={s.minLevel} onChange={(e) => setSkill(i, { minLevel: Number(e.target.value) })} />
-                <button className={btnDanger} onClick={() => setF({ ...f, skills: f.skills.filter((_, j) => j !== i) })}>×</button>
-              </div>
-            ))}
-            <button className={btnGhost} onClick={() => setF({ ...f, skills: [...f.skills, { skillId: "", minLevel: 3 }] })}>+ Skill যোগ</button>
-          </div>
-
-          <div className="md:col-span-3">
-            <button className={btn} disabled={!f.title || !f.deadline} onClick={save}>{f.id ? "আপডেট করুন" : "তৈরি করুন"}</button>
-          </div>
-        </div>
+        <TaskForm
+          value={f}
+          onChange={setF}
+          skills={data.skills}
+          endpoint="/manager/tasks"
+          run={run}
+          onDone={() => { setF(emptyTask); setShow(false); }}
+        />
       )}
 
       <div className="space-y-4">
@@ -585,6 +517,7 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
     </div>
   );
 }
+
 
 /* ================= Allocation history ================= */
 function AllocationTab({ data }: { data: Data }) {
