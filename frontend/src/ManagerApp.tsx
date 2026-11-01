@@ -114,7 +114,7 @@ function findConflicts(d: Data): Conflict[] {
       if (cum > avail) {
         out.push({
           member: m.name,
-          text: `"${t.title}" (${new Date(t.deadline).toLocaleDateString()}) পর্যন্ত মোট ${cum}h কাজ, কিন্তু ফাঁকা সময় ≈ ${avail.toFixed(0)}h${leaveDays > 0 ? ` (ছুটি ${leaveDays.toFixed(1)} দিন)` : ""}`,
+          text: `"${t.title}" (${new Date(t.deadline).toLocaleDateString()}) - total ${cum}h of work due by then, but available time is only ≈ ${avail.toFixed(0)}h${leaveDays > 0 ? ` (leave: ${leaveDays.toFixed(1)} days)` : ""}`,
         });
       }
     }
@@ -128,18 +128,18 @@ function buildNotes(d: Data): Note[] {
   const out: Note[] = [];
   for (const a of d.assignments) {
     if (a.active && now - new Date(a.assignedAt).getTime() < 7 * DAY) {
-      out.push({ id: `a${a.id}`, tone: "info", kind: "নতুন বরাদ্দ", text: `"${a.task.title}" → ${a.user.name}`, at: a.assignedAt });
+      out.push({ id: `a${a.id}`, tone: "info", kind: "New assignment", text: `"${a.task.title}" → ${a.user.name}`, at: a.assignedAt });
     }
   }
   for (const t of d.tasks.filter(isOverdue)) {
-    out.push({ id: `o${t.id}`, tone: "danger", kind: "Overdue", text: `"${t.title}" (${nameOf(d, activeAssign(d, t.id)?.userId ?? 0)}) deadline পেরিয়ে গেছে`, at: t.deadline });
+    out.push({ id: `o${t.id}`, tone: "danger", kind: "Overdue", text: `"${t.title}" (${nameOf(d, activeAssign(d, t.id)?.userId ?? 0)}) deadline has passed`, at: t.deadline });
   }
   for (const l of d.leaves) {
     if (new Date(l.start).getTime() <= now + 7 * DAY) {
       const now0 = new Date(l.start).getTime() <= now;
       out.push({
         id: `l${l.id}`, tone: "warn", kind: "Member unavailable",
-        text: `${nameOf(d, l.userId)} ${now0 ? "এখন ছুটিতে" : "শীঘ্রই ছুটিতে"}: ${new Date(l.start).toLocaleDateString()} → ${new Date(l.end).toLocaleDateString()}`,
+        text: `${nameOf(d, l.userId)} ${now0 ? "is on leave now" : "will be on leave soon"}: ${new Date(l.start).toLocaleDateString()} → ${new Date(l.end).toLocaleDateString()}`,
         at: l.start,
       });
     }
@@ -147,20 +147,20 @@ function buildNotes(d: Data): Note[] {
   for (const m of d.members) {
     const u = utilOf(d, m);
     if (u >= OVERLOAD) {
-      out.push({ id: `w${m.id}`, tone: "warn", kind: "Workload", text: `${m.name}-এর workload ${pct(u)} (${hoursOf(d, m.id)}h / ${m.maxHoursPerWeek}h)`, at: new Date().toISOString() });
+      out.push({ id: `w${m.id}`, tone: "warn", kind: "Workload", text: `${m.name}'s workload ${pct(u)} (${hoursOf(d, m.id)}h / ${m.maxHoursPerWeek}h)`, at: new Date().toISOString() });
     }
   }
   for (const t of d.tasks) {
     const at = d.doneAt[t.id];
     if (t.status === "DONE" && at && now - new Date(at).getTime() < 7 * DAY) {
-      out.push({ id: `d${t.id}`, tone: "ok", kind: "সম্পন্ন", text: `"${t.title}" সম্পন্ন করেছেন ${nameOf(d, activeAssign(d, t.id)?.userId ?? 0)}`, at });
+      out.push({ id: `d${t.id}`, tone: "ok", kind: "Completed", text: `"${t.title}" completed by ${nameOf(d, activeAssign(d, t.id)?.userId ?? 0)}`, at });
     }
   }
    for (const r of d.needsReview) {
-    out.push({ id: `s${r.taskId}`, tone: "warn", kind: "Review দরকার", text: `"${r.title}" — ${r.assignee} Submit করেছেন`, at: r.at ?? new Date().toISOString() });
+    out.push({ id: `s${r.taskId}`, tone: "warn", kind: "Review needed", text: `"${r.title}" — ${r.assignee} submitted`, at: r.at ?? new Date().toISOString() });
   }
   for (const r of d.reassignRequests) {
-    out.push({ id: `q${r.taskId}`, tone: "warn", kind: "Reassign অনুরোধ", text: `"${r.title}" — ${r.assignee}: ${r.reason}`, at: r.at });
+    out.push({ id: `q${r.taskId}`, tone: "warn", kind: "Reassign request", text: `"${r.title}" — ${r.assignee}: ${r.reason}`, at: r.at });
   }
 
   // জরুরি আগে (overdue, review), তারপর সময় অনুযায়ী
@@ -198,7 +198,7 @@ function Overview({ data, notes, go }: { data: Data; notes: Note[]; go: (t: Tab)
     <div className="space-y-6">
       {data.allMembers && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          আপনার নামে কোনো member বরাদ্দ নেই, তাই সব সক্রিয় member দেখানো হচ্ছে। Admin "Users" থেকে member-দের আপনার (Manager) নামে দিলে এখানে শুধু আপনার টিম দেখাবে।
+          No members are assigned to you, so all active members are shown. Once an Admin assigns members to you under Users, only your team will appear here.
         </p>
       )}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -215,10 +215,10 @@ function Overview({ data, notes, go }: { data: Data; notes: Note[]; go: (t: Tab)
       <div className="grid gap-6 lg:grid-cols-2">
         <div className={`${card} p-5`}>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold">আসন্ন deadline</h3>
+            <h3 className="font-semibold">Upcoming deadlines</h3>
             <button className={btnGhost} onClick={() => go("tasks")}>Tasks</button>
           </div>
-          {upcoming.length === 0 && <p className="text-sm text-slate-500">কোনো আসন্ন deadline নেই</p>}
+          {upcoming.length === 0 && <p className="text-sm text-slate-500">No upcoming deadlines</p>}
           <ul className="space-y-2">
             {upcoming.map((t) => {
               const dl = daysLeft(t.deadline);
@@ -226,7 +226,7 @@ function Overview({ data, notes, go }: { data: Data; notes: Note[]; go: (t: Tab)
                 <li key={t.id} className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-slate-800">{t.title}</span>
                   <span className={dl <= 2 ? "font-medium text-rose-600" : "text-slate-500"}>
-                    {dl <= 0 ? "আজ" : `${dl} দিন`}
+                    {dl <= 0 ? "Today" : `${dl} days`}
                   </span>
                 </li>
               );
@@ -236,10 +236,10 @@ function Overview({ data, notes, go }: { data: Data; notes: Note[]; go: (t: Tab)
 
         <div className={`${card} p-5`}>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold">সাম্প্রতিক alert</h3>
-            <button className={btnGhost} onClick={() => go("notifications")}>সব দেখুন</button>
+            <h3 className="font-semibold">Recent alerts</h3>
+            <button className={btnGhost} onClick={() => go("notifications")}>View all</button>
           </div>
-          {notes.length === 0 && <p className="text-sm text-slate-500">কোনো alert নেই 🎉</p>}
+          {notes.length === 0 && <p className="text-sm text-slate-500">No alerts 🎉</p>}
           <ul className="space-y-2">
             {notes.slice(0, 5).map((n) => (
               <li key={n.id} className={`rounded-lg border px-3 py-2 text-sm ${TONE[n.tone]}`}>
@@ -256,7 +256,7 @@ function Overview({ data, notes, go }: { data: Data; notes: Note[]; go: (t: Tab)
               <Bar key={m.id} label={m.name} value={utilOf(data, m)} right={`${hoursOf(data, m.id)}h / ${m.maxHoursPerWeek}h`} />
             ))}
           </div>
-          {data.members.length === 0 && <p className="text-sm text-slate-500">কোনো member নেই</p>}
+          {data.members.length === 0 && <p className="text-sm text-slate-500">No members</p>}
         </div>
       </div>
     </div>
@@ -285,7 +285,7 @@ function TeamTab({ data }: { data: Data }) {
                   {m.skills.map((s) => (
                     <Badge key={s.skillId} text={`${s.skill.name} ${s.proficiency}/5`} cls="bg-indigo-50 text-indigo-700 ring-indigo-600/20" />
                   ))}
-                  {m.skills.length === 0 && <span className="text-xs text-slate-400">skill নেই</span>}
+                  {m.skills.length === 0 && <span className="text-xs text-slate-400">no skills</span>}
                 </div>
               </td>
               <td className="w-48 px-4 py-3">
@@ -293,13 +293,13 @@ function TeamTab({ data }: { data: Data }) {
               </td>
               <td className="px-4 py-3">
                 <Badge
-                  text={away ? "ছুটিতে" : leavesOf(data, m.id).length ? "আসন্ন ছুটি" : "Available"}
+                  text={away ? "On leave" : leavesOf(data, m.id).length ? "Upcoming leave" : "Available"}
                   cls={away ? "bg-rose-50 text-rose-700 ring-rose-600/20" : leavesOf(data, m.id).length ? "bg-amber-50 text-amber-700 ring-amber-600/20" : "bg-emerald-50 text-emerald-700 ring-emerald-600/20"}
                 />
               </td>
               <td className="px-4 py-3">
                 <button className={btnGhost} onClick={() => setOpen(open === m.id ? null : m.id)}>
-                  {open === m.id ? "বন্ধ" : "Profile"}
+                  {open === m.id ? "Close" : "Profile"}
                 </button>
               </td>
             </tr>
@@ -310,29 +310,29 @@ function TeamTab({ data }: { data: Data }) {
                     <div>
                       <h4 className="mb-2 text-sm font-semibold">Performance</h4>
                       <dl className="space-y-1 text-sm text-slate-700">
-                        <div className="flex justify-between"><dt>মোট টাস্ক</dt><dd>{p.total}</dd></div>
-                        <div className="flex justify-between"><dt>সম্পন্ন</dt><dd>{p.done}</dd></div>
+                        <div className="flex justify-between"><dt>Total tasks</dt><dd>{p.total}</dd></div>
+                        <div className="flex justify-between"><dt>Completed</dt><dd>{p.done}</dd></div>
                         <div className="flex justify-between"><dt>Completion rate</dt><dd>{pct(p.rate)}</dd></div>
-                        <div className="flex justify-between"><dt>সময়মতো / দেরিতে</dt><dd>{p.onTime} / {p.late}</dd></div>
+                        <div className="flex justify-between"><dt>On time / Late</dt><dd>{p.onTime} / {p.late}</dd></div>
                         <div className="flex justify-between"><dt>Overdue</dt><dd>{p.overdue}</dd></div>
                       </dl>
                     </div>
                     <div>
-                      <h4 className="mb-2 text-sm font-semibold">চলমান টাস্ক</h4>
+                      <h4 className="mb-2 text-sm font-semibold">Active tasks</h4>
                       <ul className="space-y-1 text-sm text-slate-700">
                         {openMine(data, m.id).map((t) => (
                           <li key={t.id}>{t.title} <span className="text-slate-400">· {t.estimatedHours}h</span></li>
                         ))}
-                        {openMine(data, m.id).length === 0 && <li className="text-slate-400">নেই</li>}
+                        {openMine(data, m.id).length === 0 && <li className="text-slate-400">None</li>}
                       </ul>
                     </div>
                     <div>
-                      <h4 className="mb-2 text-sm font-semibold">ছুটি</h4>
+                      <h4 className="mb-2 text-sm font-semibold">Leave</h4>
                       <ul className="space-y-1 text-sm text-slate-700">
                         {leavesOf(data, m.id).map((l) => (
                           <li key={l.id}>{new Date(l.start).toLocaleDateString()} → {new Date(l.end).toLocaleDateString()}</li>
                         ))}
-                        {leavesOf(data, m.id).length === 0 && <li className="text-slate-400">নেই</li>}
+                        {leavesOf(data, m.id).length === 0 && <li className="text-slate-400">None</li>}
                       </ul>
                     </div>
                   </div>
@@ -342,7 +342,7 @@ function TeamTab({ data }: { data: Data }) {
           </Fragment>
         );
       })}
-      {data.members.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={6}>কোনো member নেই</td></tr>}
+      {data.members.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={6}>No members</td></tr>}
     </Table>
   );
 }
@@ -371,7 +371,7 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
     run(async () => {
       const s = await api<Sug[]>(`/manager/tasks/${id}/suggestions`);
       setSug((p) => ({ ...p, [id]: s }));
-      if (s.length === 0) throw new Error("টিমে কোনো যোগ্য সদস্য পাওয়া যায়নি (skill বা ছুটি দেখুন)");
+      if (s.length === 0) throw new Error("No eligible member found in your team (check skills or leave)");
     });
   }
 
@@ -395,7 +395,7 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
           </button>
         ))}
         <button className={`${btn} ml-auto`} onClick={() => { setF(emptyTask); setShow((v) => !v); }}>
-          {show ? "বন্ধ করুন" : "+ নতুন টাস্ক"}
+          {show ? "Close" : "+ New task"}
         </button>
       </div>
 
@@ -424,7 +424,7 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
                     <span className={isOverdue(t) ? "text-rose-600" : ""}>Deadline: {fmt(t.deadline)}</span>
                   </p>
                   <p className="text-sm text-slate-500">
-                    Skills: {t.skills.map((s) => `${s.skill.name} (≥${s.minLevel})`).join(", ") || "নেই"}
+                    Skills: {t.skills.map((s) => `${s.skill.name} (≥${s.minLevel})`).join(", ") || "none"}
                     {a && <> · Assignee: <b className="text-slate-700">{a.user.name}</b></>}
                   </p>
                 </div>
@@ -437,19 +437,19 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
                     {t.status === "PENDING" && (
                       <>
                         <button className={btn} onClick={() => suggest(t.id)}>Suggest</button>
-                        <button className={btnGhost} onClick={() => run(() => api(`/manager/tasks/${t.id}/auto-assign`, { method: "POST" }), "Auto-assign সম্পন্ন")}>Auto</button>
+                        <button className={btnGhost} onClick={() => run(() => api(`/manager/tasks/${t.id}/auto-assign`, { method: "POST" }), "Auto-assign done")}>Auto</button>
                       </>
                     )}
                     {isOpen(t) && (
                       <select
                         className={`${inp} py-1 text-xs`}
                         value=""
-                        onChange={(e) => e.target.value && assign(t.id, Number(e.target.value), t.status === "PENDING" ? "Assign হয়েছে" : "Reassign হয়েছে")}
+                        onChange={(e) => e.target.value && assign(t.id, Number(e.target.value), t.status === "PENDING" ? "Assigned" : "Reassigned")}
                       >
                         <option value="">{t.status === "PENDING" ? "Manual assign…" : "Reassign…"}</option>
                         {data.members.map((m) => (
                           <option key={m.id} value={m.id}>
-                            {m.name}{onLeaveNow(data, m.id) ? " (ছুটিতে)" : ""}{utilOf(data, m) >= OVERLOAD ? " (⚠ বেশি কাজ)" : ""}
+                            {m.name}{onLeaveNow(data, m.id) ? " (on leave)" : ""}{utilOf(data, m) >= OVERLOAD ? " (⚠ heavy workload)" : ""}
                           </option>
                         ))}
                       </select>
@@ -458,14 +458,14 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
                     {isOpen(t) && (
                       <button
                         className={btnDanger}
-                        onClick={() => window.confirm(`"${t.title}" বাতিল করবেন?`) && run(() => api(`/tasks/${t.id}/status`, { method: "PATCH", body: { status: "CANCELLED" } }), "টাস্ক বাতিল হয়েছে")}
+                        onClick={() => window.confirm(`Cancel task "${t.title}"?`) && run(() => api(`/tasks/${t.id}/status`, { method: "PATCH", body: { status: "CANCELLED" } }), "Task cancelled")}
                       >
                         Cancel
                       </button>
                     )}
                     <button
                       className={btnDanger}
-                      onClick={() => window.confirm(`"${t.title}" স্থায়ীভাবে মুছবেন?`) && run(() => api(`/manager/tasks/${t.id}`, { method: "DELETE" }), "টাস্ক মোছা হয়েছে")}
+                      onClick={() => window.confirm(`Permanently delete task "${t.title}"?`) && run(() => api(`/manager/tasks/${t.id}`, { method: "DELETE" }), "Task deleted")}
                     >
                       Delete
                     </button>
@@ -475,7 +475,7 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
 
               {list.length > 0 && (
                 <div className="mt-4">
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Top {Math.min(3, list.length)} সুপারিশ</p>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Top {Math.min(3, list.length)} suggestions</p>
                   <div className="grid gap-3 md:grid-cols-3">
                     {list.slice(0, 3).map((s, i) => (
                       <div key={s.userId} className="rounded-lg border border-slate-200 p-3">
@@ -486,21 +486,21 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
                         {(Object.keys(LABELS) as (keyof typeof LABELS)[]).map((k) => (
                           <ScoreBar key={k} label={LABELS[k]} value={s.breakdown[k]} />
                         ))}
-                        <button className={`${btn} mt-2 w-full`} onClick={() => assign(t.id, s.userId, "Assign হয়েছে")}>Assign</button>
+                        <button className={`${btn} mt-2 w-full`} onClick={() => assign(t.id, s.userId, "Assigned")}>Assign</button>
                       </div>
                     ))}
                   </div>
                   {list.length > 3 && (
                     <div className="mt-3">
                       <button className={btnGhost} onClick={() => setAll({ ...all, [t.id]: !all[t.id] })}>
-                        {all[t.id] ? "লুকান" : `সব যোগ্য member (${list.length})`}
+                        {all[t.id] ? "Hide" : `All eligible members (${list.length})`}
                       </button>
                       {all[t.id] && (
                         <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
                           {list.map((s, i) => (
                             <li key={s.userId} className="flex items-center justify-between px-3 py-2 text-sm">
                               <span>#{i + 1} {s.name} <span className="font-mono text-slate-500">· {(s.score * 100).toFixed(1)}</span></span>
-                              <button className={btnGhost} onClick={() => assign(t.id, s.userId, "Assign হয়েছে")}>Assign</button>
+                              <button className={btnGhost} onClick={() => assign(t.id, s.userId, "Assigned")}>Assign</button>
                             </li>
                           ))}
                         </ul>
@@ -512,7 +512,7 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
             </div>
           );
         })}
-        {rows.length === 0 && <p className="text-slate-500">কোনো টাস্ক নেই</p>}
+        {rows.length === 0 && <p className="text-slate-500">No tasks</p>}
       </div>
     </div>
   );
@@ -535,7 +535,7 @@ function AllocationTab({ data }: { data: Data }) {
           </td>
         </tr>
       ))}
-      {data.assignments.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={6}>এখনো কোনো assignment নেই</td></tr>}
+      {data.assignments.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={6}>No assignments yet</td></tr>}
     </Table>
   );
 }
@@ -557,30 +557,30 @@ function WorkloadTab({ data, run }: { data: Data; run: Run }) {
       </div>
 
       <div className={`${card} p-5`}>
-        <h3 className="mb-4 font-semibold">Member workload ও availability</h3>
+        <h3 className="mb-4 font-semibold">Member workload and availability</h3>
         <div className="grid gap-x-8 md:grid-cols-2">
           {data.members.map((m) => {
             const u = utilOf(data, m);
             return (
               <div key={m.id}>
-                <Bar label={`${m.name}${u >= OVERLOAD ? " ⚠ Overloaded" : ""}${onLeaveNow(data, m.id) ? " · ছুটিতে" : ""}`} value={u} right={`${hoursOf(data, m.id)}h / ${m.maxHoursPerWeek}h`} />
+                <Bar label={`${m.name}${u >= OVERLOAD ? " ⚠ Overloaded" : ""}${onLeaveNow(data, m.id) ? " · on leave" : ""}`} value={u} right={`${hoursOf(data, m.id)}h / ${m.maxHoursPerWeek}h`} />
               </div>
             );
           })}
         </div>
-        {data.members.length === 0 && <p className="text-sm text-slate-500">কোনো member নেই</p>}
+        {data.members.length === 0 && <p className="text-sm text-slate-500">No members</p>}
       </div>
 
       <div className={`${card} p-5`}>
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-semibold">Workload balance প্রস্তাব</h3>
+          <h3 className="font-semibold">Workload balance suggestions</h3>
           <button className={btn} onClick={() => run(async () => setProps(await api<Proposal[]>("/manager/balance")))}>
-            প্রস্তাব দেখুন
+            Show suggestions
           </button>
         </div>
-        <p className="mb-3 text-xs text-slate-500">যাদের load ৮০%-এর বেশি, তাদের এখনো শুরু না হওয়া টাস্ক কম-load যোগ্য member-কে দেওয়ার প্রস্তাব।</p>
-        {props === null && <p className="text-sm text-slate-500">"প্রস্তাব দেখুন" চাপুন</p>}
-        {props !== null && props.length === 0 && <p className="text-sm text-slate-500">এখন কোনো স্থানান্তরের প্রয়োজন নেই ✅</p>}
+        <p className="mb-3 text-xs text-slate-500">Moves not-yet-started tasks from members above 80% load to eligible members with a lower load.</p>
+        {props === null && <p className="text-sm text-slate-500">Click "Show suggestions"</p>}
+        {props !== null && props.length === 0 && <p className="text-sm text-slate-500">No reassignment needed right now ✅</p>}
         <ul className="space-y-2">
           {props?.map((p) => (
             <li key={p.taskId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
@@ -594,7 +594,7 @@ function WorkloadTab({ data, run }: { data: Data; run: Run }) {
                   run(async () => {
                     await api(`/manager/tasks/${p.taskId}/assign`, { method: "POST", body: { userId: p.toId } });
                     setProps((cur) => (cur ? cur.filter((x) => x.taskId !== p.taskId) : cur));
-                  }, "স্থানান্তর হয়েছে")
+                  }, "Task moved")
                 }
               >
                 Apply
@@ -606,7 +606,7 @@ function WorkloadTab({ data, run }: { data: Data; run: Run }) {
 
       <div className={`${card} p-5`}>
         <h3 className="mb-3 font-semibold">Task conflicts</h3>
-        {conflicts.length === 0 && <p className="text-sm text-slate-500">কোনো conflict নেই ✅</p>}
+        {conflicts.length === 0 && <p className="text-sm text-slate-500">No conflicts ✅</p>}
         <ul className="space-y-2">
           {conflicts.map((c, i) => (
             <li key={i} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -614,7 +614,7 @@ function WorkloadTab({ data, run }: { data: Data; run: Run }) {
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-xs text-slate-400">হিসাব: সাপ্তাহিক ক্ষমতা ÷ ৭ = দৈনিক ঘণ্টা, ছুটির দিন বাদ। deadline অনুযায়ী জমা কাজ ফাঁকা সময়ের বেশি হলে conflict।</p>
+        <p className="mt-3 text-xs text-slate-400">Calculation: weekly capacity / 7 = hours per day, leave days excluded. A conflict is reported when the work due by a deadline exceeds the available time.</p>
       </div>
     </div>
   );
@@ -649,21 +649,21 @@ function PerformanceTab({ data }: { data: Data }) {
             <td className="w-44 px-4 py-3"><Bar label="" value={p.rate} /></td>
           </tr>
         ))}
-        {rows.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={7}>কোনো member নেই</td></tr>}
+        {rows.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={7}>No members</td></tr>}
       </Table>
       <div className={`${card} p-5`}>
-        <h3 className="mb-3 font-semibold">সম্পন্ন টাস্ক</h3>
-        {done.length === 0 && <p className="text-sm text-slate-500">এখনো কিছু সম্পন্ন হয়নি</p>}
+        <h3 className="mb-3 font-semibold">Completed tasks</h3>
+        {done.length === 0 && <p className="text-sm text-slate-500">Nothing completed yet</p>}
         <ul className="space-y-2">
           {done.slice(0, 8).map((t) => (
             <li key={t.id} className="flex justify-between text-sm">
               <span className="text-slate-800">{t.title} <span className="text-slate-400">· {nameOf(data, activeAssign(data, t.id)?.userId ?? 0)}</span></span>
-              <span className="text-slate-500">{data.doneAt[t.id] ? fmt(data.doneAt[t.id]) : "সময় রেকর্ড নেই"}</span>
+              <span className="text-slate-500">{data.doneAt[t.id] ? fmt(data.doneAt[t.id]) : "No time recorded"}</span>
             </li>
           ))}
         </ul>
       </div>
-      <p className="text-xs text-slate-400">"On time/Late" শুধু সেই টাস্কের জন্য, যেগুলোর সম্পন্ন হওয়ার সময় রেকর্ড হয়েছে (এই আপডেটের পর সম্পন্ন)।</p>
+      <p className="text-xs text-slate-400">"On time / Late" counts only tasks whose completion time was recorded (tasks completed after this update).</p>
     </div>
   );
 }
@@ -672,7 +672,7 @@ function PerformanceTab({ data }: { data: Data }) {
 function NotificationsTab({ notes }: { notes: Note[] }) {
   return (
     <div className="space-y-3">
-      {notes.length === 0 && <p className="text-slate-500">কোনো notification নেই 🎉</p>}
+      {notes.length === 0 && <p className="text-slate-500">No notifications 🎉</p>}
       {notes.map((n) => (
         <div key={n.id} className={`rounded-lg border px-4 py-3 text-sm ${TONE[n.tone]}`}>
           <div className="flex justify-between gap-3">
@@ -681,7 +681,7 @@ function NotificationsTab({ notes }: { notes: Note[] }) {
           </div>
         </div>
       ))}
-      <p className="text-xs text-slate-400">এগুলো ডাটা থেকে সরাসরি হিসাব করা (গত ৭ দিন ও চলমান অবস্থা)। email notification এখনো নেই।</p>
+      <p className="text-xs text-slate-400">These are calculated directly from the data (last 7 days and current state). Email notifications are not available yet.</p>
     </div>
   );
 }
@@ -704,7 +704,7 @@ function ReportsTab({ data }: { data: Data }) {
       {
         id: "team-workload", title: "Team workload",
         cols: ["Member", "Active hours", "Capacity (h)", "Utilization", "Available"],
-        rows: data.members.map((m) => [m.name, hoursOf(data, m.id), m.maxHoursPerWeek, pct(utilOf(data, m)), onLeaveNow(data, m.id) ? "ছুটিতে" : "হ্যাঁ"]),
+        rows: data.members.map((m) => [m.name, hoursOf(data, m.id), m.maxHoursPerWeek, pct(utilOf(data, m)), onLeaveNow(data, m.id) ? "On leave" : "Yes"]),
       },
       {
         id: "overdue", title: "Overdue tasks",
@@ -733,13 +733,13 @@ function ReportsTab({ data }: { data: Data }) {
             {x.title}
           </button>
         ))}
-        <button className={`${btn} ml-auto`} onClick={() => downloadCsv(r.id, r.cols, r.rows)}>CSV ডাউনলোড</button>
+        <button className={`${btn} ml-auto`} onClick={() => downloadCsv(r.id, r.cols, r.rows)}>Download CSV</button>
       </div>
       <Table head={r.cols}>
         {r.rows.map((row, i) => (
           <tr key={i}>{row.map((c, j) => <td key={j} className="px-4 py-3 text-slate-700">{c}</td>)}</tr>
         ))}
-        {r.rows.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={r.cols.length}>এই রিপোর্টে কিছু নেই</td></tr>}
+        {r.rows.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={r.cols.length}>Nothing in this report</td></tr>}
       </Table>
     </div>
   );
@@ -788,7 +788,7 @@ export default function ManagerApp({ user, onLogout }: { user: { name: string };
     <Shell nav={nav} tab={tab} onTab={setTab} user={user} roleLabel="Manager" onLogout={onLogout}>
       <Notice msg={msg} ok={ok} />
       {!data ? (
-        <p className="text-slate-500">লোড হচ্ছে…</p>
+        <p className="text-slate-500">Loading…</p>
       ) : (
         <>
           {tab === "overview" && <Overview data={data} notes={notes} go={setTab} />}

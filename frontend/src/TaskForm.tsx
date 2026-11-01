@@ -53,7 +53,7 @@ export function SkillPicker({
         .filter((s): s is Skill => !!s),
     }));
     const others = skills.filter((s) => !known.has(s.name.toLowerCase()));
-    if (others.length > 0) list.push({ name: "অন্যান্য / কাস্টম", items: others });
+    if (others.length > 0) list.push({ name: "Other / Custom", items: others });
     return list;
   }, [byName, catalogNames, skills]);
 
@@ -87,14 +87,14 @@ export function SkillPicker({
       const s = await api<Skill>("/skills", { method: "POST", body: { name } });
       onChange([...value, { skillId: s.id, minLevel: 3 }]);
       setQ("");
-    }, `"${name}" skill যোগ হয়েছে`);
+    }, `Skill "${name}" added`);
   }
 
   return (
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs font-medium text-slate-500">Required skills ({value.length}টি বাছাই করা)</p>
-        {missing.length > 0 && <span className="text-xs text-slate-400">skill তালিকা তৈরি হচ্ছে…</span>}
+        <p className="text-xs font-medium text-slate-500">Required skills ({value.length} selected)</p>
+        {missing.length > 0 && <span className="text-xs text-slate-400">Preparing skill list…</span>}
       </div>
 
       {value.length > 0 && (
@@ -127,7 +127,7 @@ export function SkillPicker({
       <div className="mb-3 flex gap-2">
         <input
           className={`${inp} flex-1`}
-          placeholder="Skill খুঁজুন, না পেলে নতুন নাম লিখে যোগ করুন"
+          placeholder="Search skills, or type a new name to add it"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
@@ -139,7 +139,7 @@ export function SkillPicker({
         />
         {term !== "" && !exact && (
           <button type="button" className={btn} onClick={addCustom}>
-            + "{q.trim()}" যোগ করুন
+            + Add "{q.trim()}"
           </button>
         )}
       </div>
@@ -161,8 +161,8 @@ export function SkillPicker({
         </div>
       )}
 
-      {!term && !cat && <p className="text-xs text-slate-400">একটি category বাছুন (যেমন Frontend), অথবা ওপরে skill খুঁজুন।</p>}
-      {term !== "" && shown.length === 0 && <p className="text-xs text-slate-400">এই নামে কোনো skill নেই, ওপরের বাটনে চাপলে নতুন হিসেবে যোগ হবে।</p>}
+      {!term && !cat && <p className="text-xs text-slate-400">Pick a category (e.g. Frontend), or search for a skill above.</p>}
+      {term !== "" && shown.length === 0 && <p className="text-xs text-slate-400">No skill with this name. Use the button above to add it as a new skill.</p>}
 
       <div className="flex flex-wrap gap-2">
         {shown.map((s) => (
@@ -211,13 +211,13 @@ export default function TaskForm({
       if (f.id) await api(`${endpoint}/${f.id}`, { method: "PATCH", body });
       else await api(endpoint, { method: "POST", body });
       onDone();
-    }, f.id ? "টাস্ক আপডেট হয়েছে" : "টাস্ক তৈরি হয়েছে");
+    }, f.id ? "Task updated" : "Task created");
   }
 
   return (
     <div className={`${card} grid gap-3 p-4 md:grid-cols-3`}>
       <input className={`${inp} md:col-span-3`} placeholder="Title" value={f.title} onChange={(e) => set({ title: e.target.value })} />
-      <textarea className={`${inp} md:col-span-3`} rows={2} placeholder="বিবরণ (ঐচ্ছিক)" value={f.description} onChange={(e) => set({ description: e.target.value })} />
+      <textarea className={`${inp} md:col-span-3`} rows={2} placeholder="Description (optional)" value={f.description} onChange={(e) => set({ description: e.target.value })} />
       <label className="text-xs text-slate-500">Estimated hours
         <input className={`${inp} mt-1 w-full`} type="number" min={1} value={f.hours} onChange={(e) => set({ hours: Number(e.target.value) })} />
       </label>
@@ -233,7 +233,7 @@ export default function TaskForm({
         <input className={`${inp} mt-1 w-full`} type="number" min={1} max={5} value={f.difficulty} onChange={(e) => set({ difficulty: Number(e.target.value) })} />
       </label>
       <label className="text-xs text-slate-500 md:col-span-2">Category
-        <input className={`${inp} mt-1 w-full`} list="task-categories" placeholder="যেমন Frontend" value={f.category} onChange={(e) => set({ category: e.target.value })} />
+        <input className={`${inp} mt-1 w-full`} list="task-categories" placeholder="e.g. Frontend" value={f.category} onChange={(e) => set({ category: e.target.value })} />
         <datalist id="task-categories">
           {SKILL_CATALOG.map((c) => <option key={c.category} value={c.category} />)}
         </datalist>
@@ -245,7 +245,7 @@ export default function TaskForm({
 
       <div className="md:col-span-3">
         <button className={btn} disabled={f.title.trim().length < 2 || !f.deadline || f.hours <= 0} onClick={save}>
-          {f.id ? "আপডেট করুন" : "তৈরি করুন"}
+          {f.id ? "Update" : "Create"}
         </button>
       </div>
     </div>

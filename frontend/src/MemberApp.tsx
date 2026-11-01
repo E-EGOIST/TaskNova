@@ -64,7 +64,7 @@ const isActiveStage = (s: Stage) => ["ASSIGNED", "ACCEPTED", "IN_PROGRESS", "SUB
 const dur = (from: string, to: string) => {
   const h = (new Date(to).getTime() - new Date(from).getTime()) / 3600000;
   if (h < 0) return "—";
-  return h < 48 ? `${h.toFixed(1)} ঘণ্টা` : `${(h / 24).toFixed(1)} দিন`;
+  return h < 48 ? `${h.toFixed(1)} hours` : `${(h / 24).toFixed(1)} days`;
 };
 const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / DAY);
 
@@ -96,23 +96,23 @@ function buildNotes(d: Data): Note[] {
   for (const i of live(d)) {
     const st = stageOf(i);
     if (st === "ASSIGNED") {
-      out.push({ id: `n${i.id}`, tone: "info", kind: "নতুন টাস্ক", text: `"${i.task.title}" আপনাকে দেওয়া হয়েছে। Accept বা শুরু করুন`, at: i.assignedAt });
+      out.push({ id: `n${i.id}`, tone: "info", kind: "New task", text: `"${i.task.title}" has been assigned to you. Accept it or start working`, at: i.assignedAt });
     }
     if (["ASSIGNED", "ACCEPTED", "IN_PROGRESS"].includes(st)) {
       const dl = daysLeft(i.task.deadline);
       if (isOverdue(i.task)) {
-        out.push({ id: `o${i.id}`, tone: "danger", kind: "Overdue", text: `"${i.task.title}" deadline পেরিয়ে গেছে`, at: i.task.deadline });
+        out.push({ id: `o${i.id}`, tone: "danger", kind: "Overdue", text: `"${i.task.title}" deadline has passed`, at: i.task.deadline });
       } else if (dl <= 3) {
-        out.push({ id: `r${i.id}`, tone: "warn", kind: "Deadline reminder", text: `"${i.task.title}" — ${dl <= 0 ? "আজই" : `${dl} দিন`} বাকি`, at: i.task.deadline });
+        out.push({ id: `r${i.id}`, tone: "warn", kind: "Deadline reminder", text: `"${i.task.title}" — ${dl <= 0 ? "today" : `${dl} days`} left`, at: i.task.deadline });
       }
     }
     if (i.flow?.reassignDeclined !== null && i.flow?.reassignDeclined !== undefined) {
-      out.push({ id: `x${i.id}`, tone: "warn", kind: "Reassign অনুরোধ", text: `"${i.task.title}": ${i.flow.reassignDeclined}`, at: i.assignedAt });
+      out.push({ id: `x${i.id}`, tone: "warn", kind: "Reassign request", text: `"${i.task.title}": ${i.flow.reassignDeclined}`, at: i.assignedAt });
     }
   }
   for (const i of d.items) {
     if (!i.active && i.replacedAt && now - new Date(i.replacedAt).getTime() < 14 * DAY) {
-      out.push({ id: `p${i.id}`, tone: "info", kind: "Reassigned", text: `"${i.task.title}" আপনার কাছ থেকে অন্যকে দেওয়া হয়েছে`, at: i.replacedAt });
+      out.push({ id: `p${i.id}`, tone: "info", kind: "Reassigned", text: `"${i.task.title}" has been reassigned to someone else`, at: i.replacedAt });
     }
   }
   for (const r of d.reviews) {
@@ -164,7 +164,7 @@ function Overview({ data, notes, go }: { data: Data; notes: Note[]; go: (t: Tab)
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Stat label="Active" value={count((s) => ["ACCEPTED", "IN_PROGRESS"].includes(s))} tone="text-indigo-600" />
-        <Stat label="Pending (শুরু হয়নি)" value={count((s) => s === "ASSIGNED")} tone="text-amber-600" />
+        <Stat label="Pending (not started)" value={count((s) => s === "ASSIGNED")} tone="text-amber-600" />
         <Stat label="Submitted" value={count((s) => s === "SUBMITTED")} tone="text-violet-600" />
         <Stat label="Completed" value={count((s) => s === "COMPLETED")} tone="text-emerald-600" />
         <Stat label="Overdue" value={l.filter((i) => isOverdue(i.task)).length} tone="text-rose-600" />
@@ -172,23 +172,23 @@ function Overview({ data, notes, go }: { data: Data; notes: Note[]; go: (t: Tab)
       </div>
 
       <div className={`${card} p-5`}>
-        <Bar label="আমার workload" value={w.util} right={`${pct(w.util)} ব্যবহৃত`} />
+        <Bar label="My workload" value={w.util} right={`${pct(w.util)} used`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className={`${card} p-5`}>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold">আসন্ন deadline</h3>
+            <h3 className="font-semibold">Upcoming deadlines</h3>
             <button className={btnGhost} onClick={() => go("tasks")}>My tasks</button>
           </div>
-          {upcoming.length === 0 && <p className="text-sm text-slate-500">কোনো আসন্ন deadline নেই</p>}
+          {upcoming.length === 0 && <p className="text-sm text-slate-500">No upcoming deadlines</p>}
           <ul className="space-y-2">
             {upcoming.map((i) => {
               const dl = daysLeft(i.task.deadline);
               return (
                 <li key={i.id} className="flex justify-between gap-3 text-sm">
                   <span className="text-slate-800">{i.task.title}</span>
-                  <span className={dl <= 2 ? "font-medium text-rose-600" : "text-slate-500"}>{dl <= 0 ? "আজ" : `${dl} দিন`}</span>
+                  <span className={dl <= 2 ? "font-medium text-rose-600" : "text-slate-500"}>{dl <= 0 ? "Today" : `${dl} days`}</span>
                 </li>
               );
             })}
@@ -197,10 +197,10 @@ function Overview({ data, notes, go }: { data: Data; notes: Note[]; go: (t: Tab)
 
         <div className={`${card} p-5`}>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold">সাম্প্রতিক notification</h3>
-            <button className={btnGhost} onClick={() => go("notifications")}>সব দেখুন</button>
+            <h3 className="font-semibold">Recent notifications</h3>
+            <button className={btnGhost} onClick={() => go("notifications")}>View all</button>
           </div>
-          {notes.length === 0 && <p className="text-sm text-slate-500">কোনো notification নেই 🎉</p>}
+          {notes.length === 0 && <p className="text-sm text-slate-500">No notifications 🎉</p>}
           <ul className="space-y-2">
             {notes.slice(0, 4).map((n) => (
               <li key={n.id} className={`rounded-lg border px-3 py-2 text-sm ${TONE[n.tone]}`}>
@@ -252,27 +252,27 @@ function TaskCard({ item, me, run }: { item: Item; me: Me; run: Run }) {
 
       {f?.lastReview?.decision === "REJECTED" && stage === "IN_PROGRESS" && (
         <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-          <b>ম্যানেজার ফেরত দিয়েছেন:</b> {f.lastReview.note || "কোনো মন্তব্য নেই"}। সংশোধন করে আবার Submit করুন।
+          <b>Manager returned this task:</b> {f.lastReview.note || "No comment"}. Please fix it and submit again.
         </p>
       )}
       {f?.reassign && (
         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Reassign অনুরোধ পাঠানো হয়েছে, ম্যানেজারের উত্তরের অপেক্ষায়: "{f.reassign.reason}"
+          Reassign request sent, waiting for the manager: "{f.reassign.reason}"
         </p>
       )}
       {f?.reassignDeclined && (
         <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-          Reassign অনুরোধ গ্রহণ হয়নি: {f.reassignDeclined}
+          Reassign request was not accepted: {f.reassignDeclined}
         </p>
       )}
       {stage === "SUBMITTED" && (
         <p className="mt-3 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800">
-          Submit করা হয়েছে ({f?.submittedAt ? fmt(f.submittedAt) : ""}), ম্যানেজারের অনুমোদনের অপেক্ষায়।
+          Submitted ({f?.submittedAt ? fmt(f.submittedAt) : ""}), waiting for manager approval.
         </p>
       )}
       {stage === "COMPLETED" && f?.completedAt && (
         <p className="mt-3 text-sm text-emerald-700">
-          সম্পন্ন: {fmt(f.completedAt)} · সময় লেগেছে {dur(item.assignedAt, f.completedAt)}
+          Completed: {fmt(f.completedAt)} · took {dur(item.assignedAt, f.completedAt)}
         </p>
       )}
 
@@ -281,43 +281,43 @@ function TaskCard({ item, me, run }: { item: Item; me: Me; run: Run }) {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {stage === "ASSIGNED" && (
           <>
-            <button className={btn} onClick={() => act("accept", undefined, "টাস্ক Accept করা হয়েছে")}>Accept</button>
-            <button className={btnGhost} onClick={() => act("start", undefined, "টাস্ক শুরু হয়েছে")}>শুরু করুন</button>
+            <button className={btn} onClick={() => act("accept", undefined, "Task accepted")}>Accept</button>
+            <button className={btnGhost} onClick={() => act("start", undefined, "Task started")}>Start</button>
           </>
         )}
         {stage === "ACCEPTED" && (
-          <button className={btn} onClick={() => act("start", undefined, "টাস্ক শুরু হয়েছে")}>শুরু করুন</button>
+          <button className={btn} onClick={() => act("start", undefined, "Task started")}>Start</button>
         )}
         {["ASSIGNED", "ACCEPTED", "IN_PROGRESS"].includes(stage) && !f?.reassign && (
           <button
             className={btnDanger}
             onClick={() => {
-              const reason = window.prompt("কেন reassign চান? (কমপক্ষে ৩ অক্ষর)");
-              if (reason) act("request-reassign", { reason }, "অনুরোধ পাঠানো হয়েছে");
+              const reason = window.prompt("Why do you want a reassignment? (at least 3 characters)");
+              if (reason) act("request-reassign", { reason }, "Request sent");
             }}
           >
-            Reject / Reassign চাই
+            Reject / Request reassignment
           </button>
         )}
-        <button className={btnGhost} onClick={() => setOpen(!open)}>{open ? "বিস্তারিত লুকান" : "বিস্তারিত"}</button>
-        <button className={btnGhost} onClick={() => setWhy(!why)}>কেন আমাকে?</button>
+        <button className={btnGhost} onClick={() => setOpen(!open)}>{open ? "Hide details" : "Details"}</button>
+        <button className={btnGhost} onClick={() => setWhy(!why)}>Why me?</button>
       </div>
 
       {stage === "IN_PROGRESS" && (
         <div className="mt-4 rounded-lg bg-slate-50 p-4">
-          <p className="mb-2 text-sm font-medium text-slate-700">Progress আপডেট: {pct0}%</p>
+          <p className="mb-2 text-sm font-medium text-slate-700">Update progress: {pct0}%</p>
           <input type="range" min={0} max={100} step={5} value={pct0} onChange={(e) => setPct0(Number(e.target.value))} className="w-full accent-indigo-600" />
           <div className="mt-3 flex flex-wrap gap-2">
-            <button className={btn} onClick={() => act("progress", { percent: pct0 }, "Progress সেভ হয়েছে")}>Progress সেভ</button>
+            <button className={btn} onClick={() => act("progress", { percent: pct0 }, "Progress saved")}>Save progress</button>
             <button
               className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
               onClick={() => {
-                const n = window.prompt("ম্যানেজারের জন্য মন্তব্য (ঐচ্ছিক)") ?? "";
+                const n = window.prompt("Comment for the manager (optional)") ?? "";
                 setMsg("");
-                act("submit", { note: n }, "Submit করা হয়েছে, অনুমোদনের অপেক্ষা");
+                act("submit", { note: n }, "Submitted, waiting for approval");
               }}
             >
-              Submit করুন
+              Submit
             </button>
           </div>
         </div>
@@ -325,9 +325,9 @@ function TaskCard({ item, me, run }: { item: Item; me: Me; run: Run }) {
 
       {open && (
         <div className="mt-4 space-y-3 rounded-lg bg-slate-50 p-4 text-sm">
-          <p className="text-slate-700">{t.description || "কোনো বিবরণ নেই"}</p>
+          <p className="text-slate-700">{t.description || "No description"}</p>
           <div>
-            <p className="mb-1 font-medium text-slate-700">প্রয়োজনীয় skill</p>
+            <p className="mb-1 font-medium text-slate-700">Required skills</p>
             <div className="flex flex-wrap gap-2">
               {t.skills.map((s) => {
                 const mine = mySkill(s.skillId);
@@ -335,12 +335,12 @@ function TaskCard({ item, me, run }: { item: Item; me: Me; run: Run }) {
                 return (
                   <Badge
                     key={s.skillId}
-                    text={`${s.skill.name} ≥${s.minLevel} (আমার ${mine || "—"})`}
+                    text={`${s.skill.name} ≥${s.minLevel} (you: ${mine || "—"})`}
                     cls={okLevel ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20" : "bg-rose-50 text-rose-700 ring-rose-600/20"}
                   />
                 );
               })}
-              {t.skills.length === 0 && <span className="text-slate-500">কোনো নির্দিষ্ট skill নেই</span>}
+              {t.skills.length === 0 && <span className="text-slate-500">No specific skills required</span>}
             </div>
           </div>
           <p className="text-slate-500">Assigned: {fmt(item.assignedAt)}</p>
@@ -350,11 +350,11 @@ function TaskCard({ item, me, run }: { item: Item; me: Me; run: Run }) {
       {why && (
         <div className="mt-4 rounded-lg bg-slate-50 p-4">
           {manual ? (
-            <p className="text-sm text-slate-600">এই টাস্ক ম্যানেজার সরাসরি আপনাকে দিয়েছেন (manual)।</p>
+            <p className="text-sm text-slate-600">The manager assigned this task to you directly (manual).</p>
           ) : (
             <>
               <p className="mb-3 text-sm text-slate-600">
-                উপযুক্ততার স্কোর: <b className="text-indigo-600">{(item.score * 100).toFixed(1)}</b> / 100
+                Suitability score: <b className="text-indigo-600">{(item.score * 100).toFixed(1)}</b> / 100
               </p>
               {LABELS.map(([k, label]) => <ScoreBar key={k} label={label} value={Number(item.scoreBreakdown[k] ?? 0)} />)}
             </>
@@ -385,7 +385,7 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
         ))}
       </div>
       {rows.map((i) => <TaskCard key={`${i.id}-${i.flow?.stage}`} item={i} me={data.me} run={run} />)}
-      {rows.length === 0 && <p className="text-slate-500">এখানে কোনো টাস্ক নেই</p>}
+      {rows.length === 0 && <p className="text-slate-500">No tasks here</p>}
     </div>
   );
 }
@@ -394,7 +394,7 @@ function TasksTab({ data, run }: { data: Data; run: Run }) {
 function NotificationsTab({ notes }: { notes: Note[] }) {
   return (
     <div className="space-y-3">
-      {notes.length === 0 && <p className="text-slate-500">কোনো notification নেই 🎉</p>}
+      {notes.length === 0 && <p className="text-slate-500">No notifications 🎉</p>}
       {notes.map((n) => (
         <div key={n.id} className={`rounded-lg border px-4 py-3 text-sm ${TONE[n.tone]}`}>
           <div className="flex justify-between gap-3">
@@ -403,7 +403,7 @@ function NotificationsTab({ notes }: { notes: Note[] }) {
           </div>
         </div>
       ))}
-      <p className="text-xs text-slate-400">এগুলো ডাটা থেকে সরাসরি হিসাব করা। email বা push notification এখনো নেই।</p>
+      <p className="text-xs text-slate-400">These are calculated directly from the data. Email and push notifications are not available yet.</p>
     </div>
   );
 }
@@ -420,30 +420,30 @@ function PerformanceTab({ data }: { data: Data }) {
         <Stat label="Late tasks" value={p.late.length} tone="text-rose-600" />
       </div>
       <div className={`${card} p-5 text-sm text-slate-600`}>
-        <p><b>Score হিসাব:</b> ৬০% × Completion rate (সম্পন্ন ÷ আমার সব টাস্ক) + ৪০% × On-time rate (সময়মতো ÷ সময় রেকর্ড থাকা সম্পন্ন টাস্ক)।</p>
-        <p className="mt-1 text-slate-400">সম্পন্নের সময় রেকর্ড না থাকলে On-time-এর জায়গায় Completion rate ধরা হয়। এটা allocation-এর স্কোর নয়, শুধু আপনার নিজের অগ্রগতি দেখার জন্য।</p>
+        <p><b>Score calculation:</b> 60% x Completion rate (completed / all my tasks) + 40% x On-time rate (on time / completed tasks with a recorded time).</p>
+        <p className="mt-1 text-slate-400">If no completion time is recorded, Completion rate is used in place of On-time rate. This is not the allocation score; it only tracks your own progress.</p>
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className={`${card} p-5`}>
-          <h3 className="mb-3 font-semibold">সম্পন্ন টাস্ক ({p.done.length})</h3>
-          {p.done.length === 0 && <p className="text-sm text-slate-500">এখনো কিছু সম্পন্ন হয়নি</p>}
+          <h3 className="mb-3 font-semibold">Completed tasks ({p.done.length})</h3>
+          {p.done.length === 0 && <p className="text-sm text-slate-500">Nothing completed yet</p>}
           <ul className="space-y-2">
             {p.done.slice(0, 8).map((i) => (
               <li key={i.id} className="flex justify-between gap-3 text-sm">
                 <span className="text-slate-800">{i.task.title}</span>
-                <span className="text-slate-500">{i.flow?.completedAt ? dur(i.assignedAt, i.flow.completedAt) : "সময় নেই"}</span>
+                <span className="text-slate-500">{i.flow?.completedAt ? dur(i.assignedAt, i.flow.completedAt) : "no time"}</span>
               </li>
             ))}
           </ul>
         </div>
         <div className={`${card} p-5`}>
-          <h3 className="mb-3 font-semibold">দেরিতে সম্পন্ন ({p.late.length})</h3>
-          {p.late.length === 0 && <p className="text-sm text-slate-500">কোনো দেরি নেই 🎉</p>}
+          <h3 className="mb-3 font-semibold">Completed late ({p.late.length})</h3>
+          {p.late.length === 0 && <p className="text-sm text-slate-500">No late tasks 🎉</p>}
           <ul className="space-y-2">
             {p.late.map((i) => (
               <li key={i.id} className="flex justify-between gap-3 text-sm">
                 <span className="text-slate-800">{i.task.title}</span>
-                <span className="text-rose-600">{dur(i.task.deadline, i.flow!.completedAt!)} দেরি</span>
+                <span className="text-rose-600">{dur(i.task.deadline, i.flow!.completedAt!)} late</span>
               </li>
             ))}
           </ul>
@@ -456,7 +456,7 @@ function PerformanceTab({ data }: { data: Data }) {
 /* ================= History ================= */
 function HistoryTab({ data }: { data: Data }) {
   return (
-    <Table head={["Task", "Assigned", "Stage", "Completed", "সময় লেগেছে", "Score", "Assignment"]}>
+    <Table head={["Task", "Assigned", "Stage", "Completed", "Time taken", "Score", "Assignment"]}>
       {data.items.map((i) => {
         const s = stageOf(i);
         return (
@@ -478,7 +478,7 @@ function HistoryTab({ data }: { data: Data }) {
           </tr>
         );
       })}
-      {data.items.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={7}>এখনো কোনো টাস্ক দেওয়া হয়নি</td></tr>}
+      {data.items.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={7}>No tasks have been assigned to you yet</td></tr>}
     </Table>
   );
 }
@@ -491,7 +491,7 @@ function AvailabilityTab({ data, run }: { data: Data; run: Run }) {
   return (
     <div className="space-y-6">
       <div className={`${card} p-5`}>
-        <h3 className="mb-3 font-semibold">ছুটি যোগ করুন</h3>
+        <h3 className="mb-3 font-semibold">Add leave</h3>
         <div className="flex flex-wrap gap-2">
           <input className={inp} type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
           <input className={inp} type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
@@ -503,15 +503,15 @@ function AvailabilityTab({ data, run }: { data: Data; run: Run }) {
                 await api("/availability", { method: "POST", body: { start: new Date(start).toISOString(), end: new Date(end).toISOString() } });
                 setStart("");
                 setEnd("");
-              }, "ছুটি যোগ হয়েছে")
+              }, "Leave added")
             }
           >
-            যোগ করুন
+            Add
           </button>
         </div>
-        <p className="mt-2 text-xs text-slate-400">ছুটি দিলে নতুন টাস্ক পাওয়ার সম্ভাবনা (Availability স্কোর) কমে।</p>
+        <p className="mt-2 text-xs text-slate-400">Adding leave lowers your chance of getting new tasks (availability score).</p>
       </div>
-      <Table head={["শুরু", "শেষ", "অবস্থা", ""]}>
+      <Table head={["Start", "End", "Status", ""]}>
         {data.leaves.map((l) => {
           const past = new Date(l.end).getTime() < now;
           const cur = new Date(l.start).getTime() <= now && !past;
@@ -521,17 +521,17 @@ function AvailabilityTab({ data, run }: { data: Data; run: Run }) {
               <td className="px-4 py-3">{fmt(l.end)}</td>
               <td className="px-4 py-3">
                 <Badge
-                  text={past ? "শেষ" : cur ? "চলছে" : "আসন্ন"}
+                  text={past ? "Ended" : cur ? "Ongoing" : "Upcoming"}
                   cls={past ? "bg-slate-100 text-slate-500 ring-slate-500/20" : cur ? "bg-rose-50 text-rose-700 ring-rose-600/20" : "bg-amber-50 text-amber-700 ring-amber-600/20"}
                 />
               </td>
               <td className="px-4 py-3">
-                <button className={btnDanger} onClick={() => run(() => api(`/availability/${l.id}`, { method: "DELETE" }), "ছুটি মোছা হয়েছে")}>মুছুন</button>
+                <button className={btnDanger} onClick={() => run(() => api(`/availability/${l.id}`, { method: "DELETE" }), "Leave deleted")}>Delete</button>
               </td>
             </tr>
           );
         })}
-        {data.leaves.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={4}>কোনো ছুটি নেই</td></tr>}
+        {data.leaves.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={4}>No leave</td></tr>}
       </Table>
     </div>
   );
@@ -560,15 +560,15 @@ function ProfileTab({ data, run }: { data: Data; run: Run }) {
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-6">
         <div className={`${card} p-5`}>
-          <h3 className="mb-4 font-semibold">আমার তথ্য</h3>
-          <label className="text-xs text-slate-500">নাম
+          <h3 className="mb-4 font-semibold">My information</h3>
+          <label className="text-xs text-slate-500">Name
             <input className={`${inp} mt-1 w-full`} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <dl className="mt-4 space-y-2 text-sm">
-            <div className="flex justify-between"><dt className="text-slate-500">ইমেইল</dt><dd>{me.email}</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-500">Email</dt><dd>{me.email}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Department</dt><dd>{me.department?.name ?? "—"}</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Manager</dt><dd>{me.manager?.name ?? "—"}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">সাপ্তাহিক ক্ষমতা</dt><dd>{me.maxHoursPerWeek}h</dd></div>
+            <div className="flex justify-between"><dt className="text-slate-500">Weekly capacity</dt><dd>{me.maxHoursPerWeek}h</dd></div>
             <div className="flex justify-between"><dt className="text-slate-500">Performance score</dt><dd>{p.score === null ? "—" : `${p.score}/100`}</dd></div>
           </dl>
           <button
@@ -578,40 +578,40 @@ function ProfileTab({ data, run }: { data: Data; run: Run }) {
               await api("/me/profile", { method: "PATCH", body: { name: name.trim() } });
               const u = localStorage.getItem("user");
               if (u) localStorage.setItem("user", JSON.stringify({ ...JSON.parse(u), name: name.trim() }));
-            }, "নাম আপডেট হয়েছে")}
+            }, "Name updated")}
           >
-            সেভ করুন
+            Save
           </button>
         </div>
 
         <div className={`${card} p-5`}>
-          <h3 className="mb-4 font-semibold">পাসওয়ার্ড বদলান</h3>
+          <h3 className="mb-4 font-semibold">Change password</h3>
           <div className="flex flex-col gap-3">
-            <input className={inp} type="password" placeholder="বর্তমান পাসওয়ার্ড" value={pw.cur} onChange={(e) => setPw({ ...pw, cur: e.target.value })} />
-            <input className={inp} type="password" placeholder="নতুন পাসওয়ার্ড (৮+ অক্ষর)" value={pw.nw} onChange={(e) => setPw({ ...pw, nw: e.target.value })} />
-            <input className={inp} type="password" placeholder="নতুন পাসওয়ার্ড আবার" value={pw.cf} onChange={(e) => setPw({ ...pw, cf: e.target.value })} />
+            <input className={inp} type="password" placeholder="Current password" value={pw.cur} onChange={(e) => setPw({ ...pw, cur: e.target.value })} />
+            <input className={inp} type="password" placeholder="New password (8+ characters)" value={pw.nw} onChange={(e) => setPw({ ...pw, nw: e.target.value })} />
+            <input className={inp} type="password" placeholder="Repeat new password" value={pw.cf} onChange={(e) => setPw({ ...pw, cf: e.target.value })} />
             {pwErr && <p className="text-sm text-rose-600">{pwErr}</p>}
             <button
               className={btn}
               disabled={!pw.cur || pw.nw.length < 8}
               onClick={() => {
-                if (pw.nw !== pw.cf) return setPwErr("নতুন পাসওয়ার্ড দুটো মিলছে না");
+                if (pw.nw !== pw.cf) return setPwErr("The new passwords do not match");
                 setPwErr("");
                 run(async () => {
                   await api("/me/password", { method: "PATCH", body: { currentPassword: pw.cur, newPassword: pw.nw } });
                   setPw({ cur: "", nw: "", cf: "" });
-                }, "পাসওয়ার্ড বদলানো হয়েছে");
+                }, "Password changed");
               }}
             >
-              সেভ করুন
+              Save
             </button>
           </div>
         </div>
       </div>
 
       <div className={`${card} p-5`}>
-        <h3 className="mb-1 font-semibold">আমার Skills ও level</h3>
-        <p className="mb-4 text-xs text-slate-400">এই level টাস্ক বরাদ্দের স্কোরে ব্যবহার হয়, তাই সঠিকভাবে দিন। ম্যানেজার এটা যাচাই ও বদলাতে পারেন।</p>
+        <h3 className="mb-1 font-semibold">My skills and levels</h3>
+        <p className="mb-4 text-xs text-slate-400">This level is used in task allocation scores, so enter it honestly. Your manager can review and change it.</p>
         <ul className="space-y-2">
           {mine.map((s) => (
             <li key={s.skillId} className="flex items-center gap-2">
@@ -626,11 +626,11 @@ function ProfileTab({ data, run }: { data: Data; run: Run }) {
               <button className={btnDanger} onClick={() => setMine(mine.filter((m) => m.skillId !== s.skillId))}>×</button>
             </li>
           ))}
-          {mine.length === 0 && <li className="text-sm text-slate-500">কোনো skill সেট নেই</li>}
+          {mine.length === 0 && <li className="text-sm text-slate-500">No skills set</li>}
         </ul>
         <div className="mt-4 flex gap-2">
           <select className={`${inp} flex-1`} value={pick} onChange={(e) => setPick(e.target.value === "" ? "" : Number(e.target.value))}>
-            <option value="">Skill যোগ করুন…</option>
+            <option value="">Add a skill…</option>
             {available.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <select className={inp} value={lvl} onChange={(e) => setLvl(Number(e.target.value))}>
@@ -645,13 +645,13 @@ function ProfileTab({ data, run }: { data: Data; run: Run }) {
               setPick("");
             }}
           >
-            যোগ
+            Add
           </button>
         </div>
-        <button className={`${btn} mt-4`} onClick={() => run(() => api("/me/skills", { method: "PUT", body: { skills: mine } }), "Skills সেভ হয়েছে")}>
-          Skills সেভ করুন
+        <button className={`${btn} mt-4`} onClick={() => run(() => api("/me/skills", { method: "PUT", body: { skills: mine } }), "Skills saved")}>
+          Save skills
         </button>
-        {allSkills.length === 0 && <p className="mt-3 text-xs text-slate-400">সিস্টেমে এখনো কোনো skill নেই। ম্যানেজার যোগ করলে এখানে আসবে।</p>}
+        {allSkills.length === 0 && <p className="mt-3 text-xs text-slate-400">There are no skills in the system yet. They will appear here once a manager adds some.</p>}
       </div>
     </div>
   );
@@ -691,7 +691,7 @@ export default function MemberApp({ user, onLogout }: { user: { name: string }; 
     <Shell nav={nav} tab={tab} onTab={setTab} user={user} roleLabel="Member" onLogout={onLogout}>
       <Notice msg={msg} ok={ok} />
       {!data ? (
-        <p className="text-slate-500">লোড হচ্ছে…</p>
+        <p className="text-slate-500">Loading…</p>
       ) : (
         <>
           {tab === "overview" && <Overview data={data} notes={notes} go={setTab} />}

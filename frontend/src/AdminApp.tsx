@@ -150,7 +150,7 @@ function Overview({ data, logs }: { data: Data; logs: Log[] }) {
 
         <div className={`${card} p-5`}>
           <h3 className="mb-4 font-semibold text-slate-900">Member workload</h3>
-          {stats.length === 0 && <p className="text-sm text-slate-500">কোনো member নেই</p>}
+          {stats.length === 0 && <p className="text-sm text-slate-500">No members</p>}
           {stats.map(({ u, util, hours }) => (
             <div key={u.id} className="mb-3">
               <div className="mb-1 flex justify-between text-xs text-slate-600">
@@ -168,7 +168,7 @@ function Overview({ data, logs }: { data: Data; logs: Log[] }) {
 
         <div className={`${card} p-5`}>
           <h3 className="mb-3 font-semibold text-slate-900">Overdue tasks</h3>
-          {overdue.length === 0 && <p className="text-sm text-slate-500">কোনো overdue টাস্ক নেই 🎉</p>}
+          {overdue.length === 0 && <p className="text-sm text-slate-500">No overdue tasks 🎉</p>}
           <ul className="space-y-2">
             {overdue.slice(0, 5).map((t) => (
               <li key={t.id} className="flex justify-between text-sm">
@@ -181,7 +181,7 @@ function Overview({ data, logs }: { data: Data; logs: Log[] }) {
 
         <div className={`${card} p-5`}>
           <h3 className="mb-3 font-semibold text-slate-900">Top performers</h3>
-          {top.length === 0 && <p className="text-sm text-slate-500">ডাটা নেই</p>}
+          {top.length === 0 && <p className="text-sm text-slate-500">No data</p>}
           <ul className="space-y-2">
             {top.map(({ u, done, rate }) => (
               <li key={u.id} className="flex justify-between text-sm">
@@ -195,7 +195,7 @@ function Overview({ data, logs }: { data: Data; logs: Log[] }) {
 
       <div className={`${card} p-5`}>
         <h3 className="mb-3 font-semibold text-slate-900">Recent activity</h3>
-        {logs.length === 0 && <p className="text-sm text-slate-500">এখনো কিছু নেই</p>}
+        {logs.length === 0 && <p className="text-sm text-slate-500">Nothing yet</p>}
         <ul className="space-y-2">
           {logs.slice(0, 6).map((l) => (
             <li key={l.id} className="flex justify-between gap-4 text-sm">
@@ -235,24 +235,24 @@ function Users({ data, run, meId }: { data: Data; run: Run; meId: number }) {
             {r}
           </button>
         ))}
-        <input className={`${inp} ml-auto w-56`} placeholder="নাম বা ইমেইল খুঁজুন" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className={btn} onClick={() => setShow((s) => !s)}>{show ? "বন্ধ করুন" : "+ ইউজার যোগ"}</button>
+        <input className={`${inp} ml-auto w-56`} placeholder="Search by name or email" value={q} onChange={(e) => setQ(e.target.value)} />
+        <button className={btn} onClick={() => setShow((s) => !s)}>{show ? "Close" : "+ Add user"}</button>
       </div>
 
       {show && (
         <div className={`${card} grid gap-3 p-4 md:grid-cols-3`}>
-          <input className={inp} placeholder="পুরো নাম" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-          <input className={inp} placeholder="ইমেইল" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-          <input className={inp} type="password" placeholder="পাসওয়ার্ড (৮+ অক্ষর)" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+          <input className={inp} placeholder="Full name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          <input className={inp} placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+          <input className={inp} type="password" placeholder="Password (8+ characters)" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
           <select className={inp} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as Role })}>
             <option value="MEMBER">MEMBER</option><option value="MANAGER">MANAGER</option><option value="ADMIN">ADMIN</option>
           </select>
           <select className={inp} value={f.departmentId} onChange={(e) => setF({ ...f, departmentId: e.target.value })}>
-            <option value="">Department নেই</option>
+            <option value="">No department</option>
             {data.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
           <select className={inp} value={f.managerId} onChange={(e) => setF({ ...f, managerId: e.target.value })}>
-            <option value="">Manager নেই</option>
+            <option value="">No manager</option>
             {managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
           <button
@@ -266,10 +266,10 @@ function Users({ data, run, meId }: { data: Data; run: Run; meId: number }) {
                 });
                 setF(empty);
                 setShow(false);
-              }, "ইউজার তৈরি হয়েছে")
+              }, "User created")
             }
           >
-            তৈরি করুন
+            Create
           </button>
         </div>
       )}
@@ -278,7 +278,7 @@ function Users({ data, run, meId }: { data: Data; run: Run; meId: number }) {
         {rows.map((u) => (
           <tr key={u.id} className={u.isActive ? "" : "bg-slate-50 text-slate-400"}>
             <td className="px-4 py-3">
-              <p className="font-medium text-slate-900">{u.name} {u.id === meId && <span className="text-xs text-slate-400">(আপনি)</span>}</p>
+              <p className="font-medium text-slate-900">{u.name} {u.id === meId && <span className="text-xs text-slate-400">(you)</span>}</p>
               <p className="text-xs text-slate-500">{u.email}</p>
             </td>
             <td className="px-4 py-3">
@@ -320,8 +320,8 @@ function Users({ data, run, meId }: { data: Data; run: Run; meId: number }) {
                 <button
                   className={btnGhost}
                   onClick={() => {
-                    const password = window.prompt(`${u.name}-এর নতুন পাসওয়ার্ড (৮+ অক্ষর):`);
-                    if (password) run(() => api(`/admin/users/${u.id}/password`, { method: "PATCH", body: { password } }), "পাসওয়ার্ড বদলানো হয়েছে");
+                    const password = window.prompt(`New password for ${u.name} (8+ characters):`);
+                    if (password) run(() => api(`/admin/users/${u.id}/password`, { method: "PATCH", body: { password } }), "Password changed");
                   }}
                 >
                   Reset
@@ -329,7 +329,7 @@ function Users({ data, run, meId }: { data: Data; run: Run; meId: number }) {
                 {u.id !== meId && (
                   <button
                     className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                    onClick={() => window.confirm(`${u.name}-কে মুছবেন?`) && run(() => api(`/admin/users/${u.id}`, { method: "DELETE" }), "মোছা হয়েছে")}
+                    onClick={() => window.confirm(`Delete ${u.name}?`) && run(() => api(`/admin/users/${u.id}`, { method: "DELETE" }), "Deleted")}
                   >
                     Delete
                   </button>
@@ -349,13 +349,13 @@ function Departments({ data, run }: { data: Data; run: Run }) {
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
-        <input className={`${inp} w-72`} placeholder="নতুন department" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className={`${inp} w-72`} placeholder="New department" value={name} onChange={(e) => setName(e.target.value)} />
         <button
           className={btn}
           disabled={name.trim().length < 2}
-          onClick={() => run(async () => { await api("/admin/departments", { method: "POST", body: { name } }); setName(""); }, "Department তৈরি হয়েছে")}
+          onClick={() => run(async () => { await api("/admin/departments", { method: "POST", body: { name } }); setName(""); }, "Department created")}
         >
-          যোগ
+          Add
         </button>
       </div>
       <Table head={["Department", "Managers", "Members", ""]}>
@@ -371,15 +371,15 @@ function Departments({ data, run }: { data: Data; run: Run }) {
                   <button
                     className={btnGhost}
                     onClick={() => {
-                      const n = window.prompt("নতুন নাম:", d.name);
-                      if (n) run(() => api(`/admin/departments/${d.id}`, { method: "PATCH", body: { name: n } }), "নাম বদলানো হয়েছে");
+                      const n = window.prompt("New name:", d.name);
+                      if (n) run(() => api(`/admin/departments/${d.id}`, { method: "PATCH", body: { name: n } }), "Renamed");
                     }}
                   >
                     Rename
                   </button>
                   <button
                     className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                    onClick={() => window.confirm(`${d.name} মুছবেন?`) && run(() => api(`/admin/departments/${d.id}`, { method: "DELETE" }), "মোছা হয়েছে")}
+                    onClick={() => window.confirm(`Delete ${d.name}?`) && run(() => api(`/admin/departments/${d.id}`, { method: "DELETE" }), "Deleted")}
                   >
                     Delete
                   </button>
@@ -389,7 +389,7 @@ function Departments({ data, run }: { data: Data; run: Run }) {
           );
         })}
       </Table>
-      <p className="text-xs text-slate-500">কাউকে department বা manager-এ দিতে "Users" ট্যাবে তার সারির ড্রপডাউন ব্যবহার করুন।</p>
+      <p className="text-xs text-slate-500">To put someone in a department or under a manager, use the dropdowns in their row on the Users tab.</p>
     </div>
   );
 }
@@ -403,7 +403,7 @@ function Tasks({ data, run }: { data: Data; run: Run }) {
   return (
     <div className="space-y-4">
       <button className={btn} onClick={() => { setF(emptyTask); setShow((s) => !s); }}>
-        {show ? "বন্ধ করুন" : "+ নতুন টাস্ক"}
+        {show ? "Close" : "+ New task"}
       </button>
 
       {show && (
@@ -425,7 +425,7 @@ function Tasks({ data, run }: { data: Data; run: Run }) {
               <td className="px-4 py-3">
                 <p className="font-medium text-slate-900">{t.title}</p>
                 <p className="text-xs text-slate-500">
-                  {t.category ?? "—"} · {t.estimatedHours}h · {t.skills.map((s) => `${s.skill.name}≥${s.minLevel}`).join(", ") || "skill নেই"}
+                  {t.category ?? "—"} · {t.estimatedHours}h · {t.skills.map((s) => `${s.skill.name}≥${s.minLevel}`).join(", ") || "no skills"}
                 </p>
               </td>
               <td className="px-4 py-3"><Badge text={t.priority} cls={PRIORITY_STYLE[t.priority]} /></td>
@@ -436,13 +436,13 @@ function Tasks({ data, run }: { data: Data; run: Run }) {
               <td className="whitespace-nowrap px-4 py-3">
                 <div className="flex items-center gap-2">
                   {t.status === "PENDING" && (
-                    <button className={btnGhost} onClick={() => run(() => api(`/admin/tasks/${t.id}/auto-assign`, { method: "POST" }), "Auto-assign সম্পন্ন")}>Auto</button>
+                    <button className={btnGhost} onClick={() => run(() => api(`/admin/tasks/${t.id}/auto-assign`, { method: "POST" }), "Auto-assign done")}>Auto</button>
                   )}
                   {isOpen(t) && (
                     <select
                       className={`${inp} py-1 text-xs`}
                       value=""
-                      onChange={(e) => e.target.value && run(() => api(`/admin/tasks/${t.id}/assign`, { method: "POST", body: { userId: Number(e.target.value) } }), t.status === "PENDING" ? "Assign হয়েছে" : "Reassign হয়েছে")}
+                      onChange={(e) => e.target.value && run(() => api(`/admin/tasks/${t.id}/assign`, { method: "POST", body: { userId: Number(e.target.value) } }), t.status === "PENDING" ? "Assigned" : "Reassigned")}
                     >
                       <option value="">{t.status === "PENDING" ? "Assign…" : "Reassign…"}</option>
                       {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -464,7 +464,7 @@ function Tasks({ data, run }: { data: Data; run: Run }) {
                   </button>
                   <button
                     className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                    onClick={() => window.confirm(`"${t.title}" মুছবেন?`) && run(() => api(`/admin/tasks/${t.id}`, { method: "DELETE" }), "টাস্ক মোছা হয়েছে")}
+                    onClick={() => window.confirm(`Delete task "${t.title}"?`) && run(() => api(`/admin/tasks/${t.id}`, { method: "DELETE" }), "Task deleted")}
                   >
                     Delete
                   </button>
@@ -473,7 +473,7 @@ function Tasks({ data, run }: { data: Data; run: Run }) {
             </tr>
           );
         })}
-        {data.tasks.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={7}>কোনো টাস্ক নেই</td></tr>}
+        {data.tasks.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={7}>No tasks</td></tr>}
       </Table>
     </div>
   );
@@ -499,7 +499,7 @@ function Allocation({ data }: { data: Data }) {
           </td>
         </tr>
       ))}
-      {data.assignments.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={6}>এখনো কোনো assignment নেই</td></tr>}
+      {data.assignments.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={6}>No assignments yet</td></tr>}
     </Table>
   );
 }
@@ -565,13 +565,13 @@ function Reports({ data }: { data: Data }) {
             {x.title}
           </button>
         ))}
-        <button className={`${btn} ml-auto`} onClick={() => downloadCsv(r.id, r.cols, r.rows)}>CSV ডাউনলোড</button>
+        <button className={`${btn} ml-auto`} onClick={() => downloadCsv(r.id, r.cols, r.rows)}>Download CSV</button>
       </div>
       <Table head={r.cols}>
         {r.rows.map((row, i) => (
           <tr key={i}>{row.map((c, j) => <td key={j} className="px-4 py-3 text-slate-700">{c}</td>)}</tr>
         ))}
-        {r.rows.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={r.cols.length}>এই রিপোর্টে কিছু নেই</td></tr>}
+        {r.rows.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={r.cols.length}>Nothing in this report</td></tr>}
       </Table>
     </div>
   );
@@ -589,7 +589,7 @@ function Activity({ logs }: { logs: Log[] }) {
           <td className="px-4 py-3 text-slate-600">{l.detail ?? ""}</td>
         </tr>
       ))}
-      {logs.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={4}>এখনো কোনো কার্যকলাপ নেই</td></tr>}
+      {logs.length === 0 && <tr><td className="px-4 py-6 text-slate-500" colSpan={4}>No activity yet</td></tr>}
     </Table>
   );
 }
@@ -671,7 +671,7 @@ export default function AdminApp({ user, onLogout }: { user: { id: number; name:
           {msg && <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{msg}</p>}
           {ok && <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{ok}</p>}
           {!data ? (
-            <p className="text-slate-500">লোড হচ্ছে…</p>
+            <p className="text-slate-500">Loading…</p>
           ) : (
             <>
               {tab === "overview" && <Overview data={data} logs={logs} />}

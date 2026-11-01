@@ -76,12 +76,12 @@ export default function Team() {
               {s.name}
             </span>
           ))}
-          {skills.length === 0 && <span className="text-gray-500">কোনো skill নেই</span>}
+          {skills.length === 0 && <span className="text-gray-500">No skills</span>}
         </div>
         <div className="flex gap-2">
           <input
             className="flex-1 rounded border p-2"
-            placeholder="নতুন skill (যেমন Node.js)"
+            placeholder="New skill (e.g. Node.js)"
             value={newSkill}
             onChange={(e) => setNewSkill(e.target.value)}
           />
@@ -90,7 +90,7 @@ export default function Team() {
             disabled={!newSkill.trim()}
             className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
           >
-            যোগ
+            Add
           </button>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function Team() {
                   </button>
                 </span>
               ))}
-              {m.skills.length === 0 && <span className="text-sm text-gray-500">কোনো skill সেট করা নেই</span>}
+              {m.skills.length === 0 && <span className="text-sm text-gray-500">No skills set</span>}
             </div>
             <div className="flex gap-2">
               <select
@@ -123,7 +123,7 @@ export default function Team() {
                   }))
                 }
               >
-                <option value="">Skill বাছুন</option>
+                <option value="">Select a skill</option>
                 {skills.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -144,12 +144,12 @@ export default function Team() {
                 }
               />
               <button onClick={() => addToMember(m)} className="rounded bg-green-600 px-3 py-2 text-white">
-                সেট
+                Set
               </button>
             </div>
           </div>
         ))}
-        {members.length === 0 && <p className="text-gray-500">কোনো member নেই</p>}
+        {members.length === 0 && <p className="text-gray-500">No members</p>}
       </div>
     </div>
   );

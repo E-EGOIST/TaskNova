@@ -42,7 +42,7 @@ export default function ReviewPanel() {
     return (
       <>
         <Notice msg={msg} ok={ok} />
-        <p className="text-slate-500">লোড হচ্ছে…</p>
+        <p className="text-slate-500">Loading…</p>
       </>
     );
   }
@@ -52,8 +52,8 @@ export default function ReviewPanel() {
       <Notice msg={msg} ok={ok} />
 
       <div className={`${card} p-5`}>
-        <h3 className="mb-3 font-semibold">Submit করা টাস্ক ({data.submitted.length})</h3>
-        {data.submitted.length === 0 && <p className="text-sm text-slate-500">review-এর অপেক্ষায় কোনো টাস্ক নেই 🎉</p>}
+        <h3 className="mb-3 font-semibold">Submitted tasks ({data.submitted.length})</h3>
+        {data.submitted.length === 0 && <p className="text-sm text-slate-500">No tasks waiting for review 🎉</p>}
         <div className="space-y-3">
           {data.submitted.map((s) => (
             <div key={s.taskId} className="rounded-lg border border-slate-200 p-4">
@@ -67,24 +67,24 @@ export default function ReviewPanel() {
                 </div>
                 <Badge text="Submitted" cls="bg-violet-50 text-violet-700 ring-violet-600/20" />
               </div>
-              {s.note && <p className="mt-2 rounded bg-slate-50 p-2 text-sm text-slate-700">মন্তব্য: {s.note}</p>}
+              {s.note && <p className="mt-2 rounded bg-slate-50 p-2 text-sm text-slate-700">Comment: {s.note}</p>}
               <div className="mt-3 flex flex-wrap gap-2">
                 <input
                   className={`${inp} flex-1`}
-                  placeholder="মন্তব্য (ফেরত দিলে কারণ লিখুন)"
+                  placeholder="Comment (give a reason when rejecting)"
                   value={notes[s.taskId] ?? ""}
                   onChange={(e) => setNotes({ ...notes, [s.taskId]: e.target.value })}
                 />
                 <button
                   className={btn}
-                  onClick={() => run(() => api(`/manager/tasks/${s.taskId}/review`, { method: "POST", body: { decision: "APPROVE", note: notes[s.taskId] ?? "" } }), "অনুমোদন করা হয়েছে, টাস্ক সম্পন্ন")}
+                  onClick={() => run(() => api(`/manager/tasks/${s.taskId}/review`, { method: "POST", body: { decision: "APPROVE", note: notes[s.taskId] ?? "" } }), "Approved, task completed")}
                 >
                   Approve
                 </button>
                 <button
                   className={btnDanger}
                   disabled={!(notes[s.taskId] ?? "").trim()}
-                  onClick={() => run(() => api(`/manager/tasks/${s.taskId}/review`, { method: "POST", body: { decision: "REJECT", note: notes[s.taskId] } }), "ফেরত দেওয়া হয়েছে")}
+                  onClick={() => run(() => api(`/manager/tasks/${s.taskId}/review`, { method: "POST", body: { decision: "REJECT", note: notes[s.taskId] } }), "Returned to the member")}
                 >
                   Reject
                 </button>
@@ -95,8 +95,8 @@ export default function ReviewPanel() {
       </div>
 
       <div className={`${card} p-5`}>
-        <h3 className="mb-3 font-semibold">Reassign অনুরোধ ({data.requests.length})</h3>
-        {data.requests.length === 0 && <p className="text-sm text-slate-500">কোনো অনুরোধ নেই</p>}
+        <h3 className="mb-3 font-semibold">Reassign requests ({data.requests.length})</h3>
+        {data.requests.length === 0 && <p className="text-sm text-slate-500">No requests</p>}
         <div className="space-y-3">
           {data.requests.map((r) => (
             <div key={r.taskId} className="rounded-lg border border-slate-200 p-4">
@@ -104,17 +104,17 @@ export default function ReviewPanel() {
               <p className="text-sm text-slate-500">
                 {r.assignee.name} · {r.estimatedHours}h · Deadline: {fmt(r.deadline)} · {fmt(r.at)}
               </p>
-              <p className="mt-2 rounded bg-amber-50 p-2 text-sm text-amber-800">কারণ: {r.reason}</p>
+              <p className="mt-2 rounded bg-amber-50 p-2 text-sm text-amber-800">Reason: {r.reason}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <select
                   className={inp}
                   value=""
                   onChange={(e) =>
                     e.target.value &&
-                    run(() => api(`/manager/tasks/${r.taskId}/assign`, { method: "POST", body: { userId: Number(e.target.value) } }), "Reassign হয়েছে")
+                    run(() => api(`/manager/tasks/${r.taskId}/assign`, { method: "POST", body: { userId: Number(e.target.value) } }), "Reassigned")
                   }
                 >
-                  <option value="">অন্য member-কে দিন…</option>
+                  <option value="">Assign to another member…</option>
                   {data.members.filter((m) => m.id !== r.assignee.id).map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
@@ -122,11 +122,11 @@ export default function ReviewPanel() {
                 <button
                   className={btnGhost}
                   onClick={() => {
-                    const note = window.prompt("কেন অনুরোধ গ্রহণ হচ্ছে না? (ঐচ্ছিক)") ?? "";
-                    run(() => api(`/manager/tasks/${r.taskId}/decline-reassign`, { method: "POST", body: { note } }), "অনুরোধ গ্রহণ করা হয়নি");
+                    const note = window.prompt("Why is the request being declined? (optional)") ?? "";
+                    run(() => api(`/manager/tasks/${r.taskId}/decline-reassign`, { method: "POST", body: { note } }), "Request declined");
                   }}
                 >
-                  গ্রহণ করব না
+                  Decline
                 </button>
               </div>
             </div>
