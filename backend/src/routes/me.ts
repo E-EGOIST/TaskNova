@@ -114,7 +114,7 @@ router.get("/overview", async (req, res) => {
 /* ---------- নিজের তথ্য ---------- */
 router.patch("/profile", async (req, res) => {
   const p = z.object({ name: z.string().trim().min(2).max(80) }).safeParse(req.body);
-  if (!p.success) return res.status(400).json({ error: "নাম কমপক্ষে ২ অক্ষরের হতে হবে" });
+  if (!p.success) return res.status(400).json({ error: "Name must be at least 2 characters" });
   await prisma.user.update({ where: { id: req.user!.id }, data: { name: p.data.name } });
   res.json({ ok: true });
 });
@@ -134,7 +134,7 @@ router.put("/skills", async (req, res) => {
     await logEvent(req, "SKILLS_SELF_UPDATED", `${list.length} skill`);
     res.json({ ok: true });
   } catch {
-    res.status(400).json({ error: "Skill সেভ করা যায়নি (skill বৈধ কি না দেখুন)" });
+    res.status(400).json({ error: "Could not save skills (check that every skill is valid)" });
   }
 });
 
@@ -142,11 +142,11 @@ router.patch("/password", async (req, res) => {
   const p = z
     .object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) })
     .safeParse(req.body);
-  if (!p.success) return res.status(400).json({ error: "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে" });
+  if (!p.success) return res.status(400).json({ error: "New password must be at least 8 characters" });
 
   const u = await prisma.user.findUnique({ where: { id: req.user!.id } });
   const ok = u && (await bcrypt.compare(p.data.currentPassword, u.passwordHash));
-  if (!u || !ok) return res.status(400).json({ error: "বর্তমান পাসওয়ার্ড ভুল" });
+  if (!u || !ok) return res.status(400).json({ error: "Current password is incorrect" });
 
   await prisma.user.update({
     where: { id: u.id },
@@ -156,13 +156,13 @@ router.patch("/password", async (req, res) => {
 });
 
 /* ---------- টাস্কের ধাপ ---------- */
-const NOT_YOURS = "এই টাস্ক আপনার নামে সক্রিয় নেই";
+const NOT_YOURS = "This task is not active under your name";
 
 router.post("/tasks/:id/accept", async (req, res) => {
   const id = Number(req.params.id);
   const cur = await myActive(id, req.user!.id);
   if (!cur) return res.status(404).json({ error: NOT_YOURS });
-  if (cur.flow.stage !== "ASSIGNED") return res.status(400).json({ error: "এই টাস্ক এখন Accept করা যায় না" });
+  if (cur.flow.stage !== "ASSIGNED") return res.status(400).json({ error: "This task cannot be accepted right now" });
   await logEvent(req, "TASK_ACCEPTED", `${id}|${cur.task.title}`);
   res.json({ ok: true });
 });
@@ -173,7 +173,7 @@ router.post("/tasks/:id/start", async (req, res) => {
   if (!cur) return res.status(404).json({ error: NOT_YOURS });
   const stage: Stage = cur.flow.stage;
   if (stage !== "ASSIGNED" && stage !== "ACCEPTED") {
-    return res.status(400).json({ error: "এই টাস্ক এখন শুরু করা যায় না" });
+    return res.status(400).json({ error: "This task cannot be started right now" });
   }
   if (stage === "ASSIGNED") await logEvent(req, "TASK_ACCEPTED", `${id}|${cur.task.title}`);
   await prisma.task.update({ where: { id }, data: { status: "IN_PROGRESS" } });
@@ -184,10 +184,10 @@ router.post("/tasks/:id/start", async (req, res) => {
 router.post("/tasks/:id/progress", async (req, res) => {
   const id = Number(req.params.id);
   const p = z.object({ percent: z.number().int().min(0).max(100), note }).safeParse(req.body);
-  if (!p.success) return res.status(400).json({ error: "Progress ০ থেকে ১০০-এর মধ্যে হতে হবে" });
+  if (!p.success) return res.status(400).json({ error: "Progress must be between 0 and 100" });
   const cur = await myActive(id, req.user!.id);
   if (!cur) return res.status(404).json({ error: NOT_YOURS });
-  if (cur.flow.stage !== "IN_PROGRESS") return res.status(400).json({ error: "টাস্ক চলমান অবস্থায় নেই" });
+  if (cur.flow.stage !== "IN_PROGRESS") return res.status(400).json({ error: "The task is not in progress" });
   await logEvent(req, "TASK_PROGRESS", `${id}|${p.data.percent}|${p.data.note ?? ""}`);
   res.json({ ok: true });
 });
@@ -198,7 +198,7 @@ router.post("/tasks/:id/submit", async (req, res) => {
   if (!p.success) return res.status(400).json({ error: "Invalid input" });
   const cur = await myActive(id, req.user!.id);
   if (!cur) return res.status(404).json({ error: NOT_YOURS });
-  if (cur.flow.stage !== "IN_PROGRESS") return res.status(400).json({ error: "আগে টাস্ক শুরু করতে হবে" });
+  if (cur.flow.stage !== "IN_PROGRESS") return res.status(400).json({ error: "Start the task first" });
   await logEvent(req, "TASK_SUBMITTED", `${id}|${p.data.note ?? ""}`);
   res.json({ ok: true });
 });
@@ -206,13 +206,13 @@ router.post("/tasks/:id/submit", async (req, res) => {
 router.post("/tasks/:id/request-reassign", async (req, res) => {
   const id = Number(req.params.id);
   const p = z.object({ reason: z.string().trim().min(3).max(500) }).safeParse(req.body);
-  if (!p.success) return res.status(400).json({ error: "কারণ লিখুন (কমপক্ষে ৩ অক্ষর)" });
+  if (!p.success) return res.status(400).json({ error: "Please give a reason (at least 3 characters)" });
   const cur = await myActive(id, req.user!.id);
   if (!cur) return res.status(404).json({ error: NOT_YOURS });
   if (!["ASSIGNED", "ACCEPTED", "IN_PROGRESS"].includes(cur.flow.stage)) {
-    return res.status(400).json({ error: "এই অবস্থায় reassign চাওয়া যায় না" });
+    return res.status(400).json({ error: "Reassignment cannot be requested at this stage" });
   }
-  if (cur.flow.reassign) return res.status(400).json({ error: "আপনার অনুরোধ আগেই পাঠানো হয়েছে" });
+  if (cur.flow.reassign) return res.status(400).json({ error: "Your request has already been sent" });
   await logEvent(req, "TASK_REASSIGN_REQUEST", `${id}|${p.data.reason}`);
   res.json({ ok: true });
 });

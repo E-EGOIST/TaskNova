@@ -100,6 +100,6 @@ export function flowOf(task: { id: number; status: string }, assignedAt: Date, a
       ? { decision: review.action === "TASK_APPROVED" ? "APPROVED" : "REJECTED", note: part(review, 2), at: review.createdAt.toISOString() }
       : null,
     reassign: req && !declinedAfterReq && canRequest ? { reason: part(req, 1), at: req.createdAt.toISOString() } : null,
-    reassignDeclined: declinedAfterReq && dec ? part(dec, 1) || "অনুরোধ গ্রহণ করা হয়নি" : null,
+    reassignDeclined: declinedAfterReq && dec ? part(dec, 1) || "Request declined" : null,
   };
 }

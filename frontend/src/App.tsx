@@ -3,8 +3,9 @@ import LoginPage, { type User } from "./LoginPage";
 import AdminApp from "./AdminApp";
 import ManagerApp from "./ManagerApp";
 import MemberApp from "./MemberApp";
+import { LangProvider } from "./i18n";
 
-export default function App() {
+function Main() {
   const [user, setUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem("user");
@@ -30,4 +31,12 @@ export default function App() {
   if (user.role === "ADMIN") return <AdminApp user={user} onLogout={logout} />;
   if (user.role === "MANAGER") return <ManagerApp user={user} onLogout={logout} />;
   return <MemberApp user={user} onLogout={logout} />;
+}
+
+export default function App() {
+  return (
+    <LangProvider>
+      <Main />
+    </LangProvider>
+  );
 }

@@ -103,7 +103,7 @@ router.get("/overview", async (req, res) => {
     if (e.action === "TASK_DONE") doneAt[taskIdOf(e)] = e.createdAt.toISOString();
   }
 
-  // Review দরকার ও Reassign অনুরোধ
+  // Review needed ও Reassign request
   const taskById = new Map<number, { title: string; status: string }>(
     tasks.map((t: { id: number; title: string; status: string }) => [t.id, t])
   );
@@ -235,10 +235,10 @@ router.post("/tasks/:id/assign", async (req, res) => {
   const task = await taskInScope(id, req.user!.id, team);
   if (!task) return res.status(404).json({ error: "Task not found" });
   if (["DONE", "CANCELLED"].includes(task.status)) {
-    return res.status(400).json({ error: "সম্পন্ন বা বাতিল টাস্ক assign করা যায় না" });
+    return res.status(400).json({ error: "Completed or cancelled tasks cannot be assigned" });
   }
   if (!team.ids.includes(p.data.userId)) {
-    return res.status(400).json({ error: "এই member আপনার টিমে নেই" });
+    return res.status(400).json({ error: "This member is not on your team" });
   }
   const target = await prisma.user.findUnique({ where: { id: p.data.userId }, select: { name: true } });
 
@@ -254,10 +254,10 @@ router.post("/tasks/:id/auto-assign", async (req, res) => {
   const team = await teamOf(req.user!.id);
   const task = await taskInScope(id, req.user!.id, team);
   if (!task) return res.status(404).json({ error: "Task not found" });
-  if (task.status !== "PENDING") return res.status(400).json({ error: "শুধু PENDING টাস্ক auto-assign হয়" });
+  if (task.status !== "PENDING") return res.status(400).json({ error: "Only PENDING tasks can be auto-assigned" });
 
   const all = ((await getSuggestions(id, 500)) ?? []).filter((s) => team.ids.includes(s.userId));
-  if (all.length === 0) return res.status(400).json({ error: "টিমে কোনো যোগ্য member পাওয়া যায়নি" });
+  if (all.length === 0) return res.status(400).json({ error: "No eligible member found in your team" });
   await doAssign(id, all[0].userId, all[0].score, all[0].breakdown);
   await log(req, "TASK_AUTO_ASSIGNED", `${task.title} → ${all[0].name}`);
   res.json({ ok: true, assignedTo: all[0].name });
@@ -368,9 +368,9 @@ router.post("/tasks/:id/review", async (req, res) => {
   if (!task) return res.status(404).json({ error: "Task not found" });
 
   const a = await prisma.assignment.findFirst({ where: { taskId: id, active: true } });
-  if (!a) return res.status(400).json({ error: "কোনো সক্রিয় assignment নেই" });
+  if (!a) return res.status(400).json({ error: "There is no active assignment" });
   const f = flowOf(task, a.assignedAt, await eventsFor([id]));
-  if (f.stage !== "SUBMITTED") return res.status(400).json({ error: "এই টাস্ক এখন review-এর অবস্থায় নেই" });
+  if (f.stage !== "SUBMITTED") return res.status(400).json({ error: "This task is not waiting for review" });
 
   const text = p.data.note ?? "";
   if (p.data.decision === "APPROVE") {
@@ -394,9 +394,9 @@ router.post("/tasks/:id/decline-reassign", async (req, res) => {
   const task = await taskInScope(id, req.user!.id, team);
   if (!task) return res.status(404).json({ error: "Task not found" });
   const a = await prisma.assignment.findFirst({ where: { taskId: id, active: true } });
-  if (!a) return res.status(400).json({ error: "কোনো সক্রিয় assignment নেই" });
+  if (!a) return res.status(400).json({ error: "There is no active assignment" });
   const f = flowOf(task, a.assignedAt, await eventsFor([id]));
-  if (!f.reassign) return res.status(400).json({ error: "কোনো পেন্ডিং অনুরোধ নেই" });
+  if (!f.reassign) return res.status(400).json({ error: "There is no pending request" });
 
   await log(req, "TASK_REASSIGN_DECLINED", `${id}|${p.data.note ?? ""}`);
   res.json({ ok: true });

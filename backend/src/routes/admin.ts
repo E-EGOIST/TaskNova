@@ -55,7 +55,7 @@ const createUser = z.object({
 
 router.post("/users", async (req, res) => {
   const p = createUser.safeParse(req.body);
-  if (!p.success) return res.status(400).json({ error: "ইনপুট ঠিক নয় (পাসওয়ার্ড কমপক্ষে ৮ অক্ষর)" });
+  if (!p.success) return res.status(400).json({ error: "Invalid input (password must be at least 8 characters)" });
   const exists = await prisma.user.findUnique({ where: { email: p.data.email } });
   if (exists) return res.status(409).json({ error: "Email already in use" });
   const { password, ...rest } = p.data;
@@ -82,7 +82,7 @@ router.patch("/users/:id", async (req, res) => {
   const p = patchUser.safeParse(req.body);
   if (!p.success) return res.status(400).json({ error: "Invalid input" });
   if (id === req.user!.id && (p.data.role !== undefined || p.data.isActive === false)) {
-    return res.status(400).json({ error: "নিজের role বা active অবস্থা বদলানো যাবে না" });
+    return res.status(400).json({ error: "You cannot change your own role or active status" });
   }
   try {
     const u = await prisma.user.update({
@@ -100,7 +100,7 @@ router.patch("/users/:id", async (req, res) => {
 router.patch("/users/:id/password", async (req, res) => {
   const id = Number(req.params.id);
   const p = z.object({ password: z.string().min(8) }).safeParse(req.body);
-  if (!p.success) return res.status(400).json({ error: "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে" });
+  if (!p.success) return res.status(400).json({ error: "Password must be at least 8 characters" });
   try {
     const u = await prisma.user.update({
       where: { id },
@@ -116,13 +116,13 @@ router.patch("/users/:id/password", async (req, res) => {
 
 router.delete("/users/:id", async (req, res) => {
   const id = Number(req.params.id);
-  if (id === req.user!.id) return res.status(400).json({ error: "নিজেকে মোছা যাবে না" });
+  if (id === req.user!.id) return res.status(400).json({ error: "You cannot delete yourself" });
   try {
     const u = await prisma.user.delete({ where: { id }, select: { email: true } });
     await log(req, "USER_DELETED", u.email);
     res.json({ ok: true });
   } catch {
-    res.status(409).json({ error: "টাস্ক বা assignment থাকলে মোছা যায় না। বদলে নিষ্ক্রিয় (Deactivate) করুন।" });
+    res.status(409).json({ error: "A user with tasks or assignments cannot be deleted. Deactivate the user instead." });
   }
 });
 
@@ -253,11 +253,11 @@ router.post("/tasks/:id/assign", async (req, res) => {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) return res.status(404).json({ error: "Task not found" });
   if (["DONE", "CANCELLED"].includes(task.status)) {
-    return res.status(400).json({ error: "সম্পন্ন বা বাতিল টাস্ক assign করা যায় না" });
+    return res.status(400).json({ error: "Completed or cancelled tasks cannot be assigned" });
   }
   const target = await prisma.user.findUnique({ where: { id: p.data.userId } });
   if (!target || !target.isActive || target.role !== "MEMBER") {
-    return res.status(400).json({ error: "একজন সক্রিয় Member লাগবে" });
+    return res.status(400).json({ error: "An active Member is required" });
   }
 
   const all = (await getSuggestions(taskId, 500)) ?? [];
@@ -273,10 +273,10 @@ router.post("/tasks/:id/auto-assign", async (req, res) => {
   const taskId = Number(req.params.id);
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) return res.status(404).json({ error: "Task not found" });
-  if (task.status !== "PENDING") return res.status(400).json({ error: "শুধু PENDING টাস্ক auto-assign হয়" });
+  if (task.status !== "PENDING") return res.status(400).json({ error: "Only PENDING tasks can be auto-assigned" });
 
   const top = await getSuggestions(taskId, 1);
-  if (!top || top.length === 0) return res.status(400).json({ error: "কোনো যোগ্য member পাওয়া যায়নি" });
+  if (!top || top.length === 0) return res.status(400).json({ error: "No eligible member found" });
   await doAssign(taskId, top[0].userId, top[0].score, top[0].breakdown);
   await log(req, "TASK_AUTO_ASSIGNED", `${task.title} → ${top[0].name}`);
   res.json({ ok: true, assignedTo: top[0].name });
